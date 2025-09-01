@@ -1,0 +1,888 @@
+openapi: 3.0.1
+info:
+  title: Cards Service API
+  description: API para gestionar tarjetas de débito y crédito
+  version: 1.2.0
+servers:
+  - url: http://localhost:8090
+    description: Local server
+
+paths:
+  /api/cards:
+    post:
+      summary: Register a new card
+      operationId: registerCard
+      requestBody:
+        description: Card details to be registered
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardRequest"
+      responses:
+        '201':
+          description: Card successfully created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '409':
+          description: Card already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '422':
+          description: Business rule not satisfied (e.g., client has overdue debts)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    get:
+      summary: List all cards
+      operationId: listCards
+      responses:
+        '200':
+          description: List of registered cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CardResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cards/{id}:
+    get:
+      summary: Get card by ID
+      operationId: getCardById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Card details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      summary: Update card details
+      operationId: updateCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Updated card data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardRequest"
+      responses:
+        '200':
+          description: Card updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      summary: Delete card
+      operationId: deleteCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Card deleted successfully
+          content: {}
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ===== Associations / Primary account (DEBIT) =====
+  /api/cards/{id}/accounts:
+    put:
+      summary: Replace the ordered list of associated accounts (DEBIT)
+      operationId: replaceCardAccounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        description: Ordered list including the primary account
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardAccountsReplaceRequest"
+      responses:
+        '200':
+          description: Accounts replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '400':
+          description: Invalid accounts list or ownership mismatch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      summary: Add an account to the end of the association list (DEBIT)
+      operationId: addCardAccount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddAccountRequest"
+      responses:
+        '200':
+          description: Account added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '400':
+          description: Invalid account or already associated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cards/{id}/accounts/{accountId}:
+    delete:
+      summary: Remove an associated account (DEBIT)
+      operationId: removeCardAccount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Account removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '400':
+          description: Cannot remove primary account or account not associated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cards/{id}/accounts/reorder:
+    put:
+      summary: Reorder associated accounts (DEBIT)
+      operationId: reorderCardAccounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountReorderRequest"
+      responses:
+        '200':
+          description: Accounts reordered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '400':
+          description: Invalid order or missing accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cards/{id}/primary-account:
+    put:
+      summary: Set the primary account (DEBIT)
+      operationId: setPrimaryAccount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetPrimaryAccountRequest"
+      responses:
+        '200':
+          description: Primary account updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardResponse"
+        '400':
+          description: Account not associated to the card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ===== Operations (DEBIT) =====
+  /api/cards/{id}/debit/payments:
+    post:
+      summary: Make a payment/purchase using the debit card
+      operationId: debitPayment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        description: Idempotent payment request (uses primary account and fallback in order)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DebitPaymentRequest"
+      responses:
+        '200':
+          description: Operation applied/evaluated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardOperationResponse"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '409':
+          description: Duplicate operation (operationId already processed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '422':
+          description: Business rule not satisfied (insufficient funds, limits, status not ACTIVE)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cards/{id}/debit/withdrawals:
+    post:
+      summary: ATM cash withdrawal using the debit card
+      operationId: debitWithdrawal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DebitWithdrawalRequest"
+      responses:
+        '200':
+          description: Operation applied/evaluated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardOperationResponse"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '409':
+          description: Duplicate operation (operationId already processed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '422':
+          description: Business rule not satisfied (insufficient funds, limits, status not ACTIVE)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ===== Pay third-party credits (using DEBIT) =====
+  /api/cards/{id}/debit/pay-credit:
+    post:
+      summary: Pay a credit product using the debit card
+      operationId: payCreditWithDebitCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayCreditRequest"
+      responses:
+        '200':
+          description: Credit payment applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardOperationResponse"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card or Credit not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '409':
+          description: Duplicate operation (operationId already processed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '422':
+          description: Business rule not satisfied (insufficient funds, limits, status not ACTIVE)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ===== Queries (movements & primary balance) =====
+  /api/cards/{id}/movements:
+    get:
+      summary: Get last N movements of this card (default 10)
+      operationId: getCardMovements
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Movement list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CardMovement"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cards/{id}/primary-account/balance:
+    get:
+      summary: Get balance of the primary account (DEBIT)
+      operationId: getPrimaryAccountBalance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Primary account balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrimaryAccountBalance"
+        '404':
+          description: Card not found or no primary account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    CardRequest:
+      type: object
+      required: [ cardType, brand, customerId ]
+      properties:
+        id:
+          type: string
+          description: Unique card ID
+          readOnly: true
+        # Número de tarjeta
+        cardNumber:
+          type: string
+          description: Card number
+          readOnly: true
+        # Tipo de tarjeta (débito o crédito)
+        cardType:
+          type: string
+          enum: [ DEBIT, CREDIT ]
+          description: Type of card
+        # Marca (Visa, Amex, etc.)
+        brand:
+          type: string
+          enum: [ VISA, MASTERCARD, AMEX, OTHER ]
+          description: Card brand
+        # Id del cliente
+        customerId:
+          type: string
+          description: Associated customer ID
+        # (DEBIT) Cuenta principal asociada
+        primaryAccountId:
+          type: string
+          nullable: true
+          description: Primary account ID linked to the debit card (required for DEBIT)
+        # (DEBIT) Cuentas adicionales asociadas en orden (además de la principal)
+        accounts:
+          type: array
+          description: Ordered list of additional account IDs linked to the card (DEBIT)
+          items:
+            type: string
+        # (CREDIT) Id del producto de crédito asociado (tarjeta/crédito en MS Credits)
+        creditId:
+          type: string
+          nullable: true
+          description: Credit product ID when cardType=CREDIT
+        # Estado de la tarjeta
+        status:
+          type: string
+          enum: [ ACTIVE, BLOCKED, EXPIRED, CANCELLED ]
+          description: Operational status of the card
+        # Fecha de emisión de la tarjeta
+        issueDate:
+          type: string
+          format: date
+          description: Card issuance date
+        # Fecha de vencimiento de la tarjeta
+        expirationDate:
+          type: string
+          format: date
+          description: Card expiration date
+        # Es virtual la tarjeta?
+        isVirtual:
+          type: boolean
+          description: Indicates if the card is virtual
+        # Indica si el PIN está habilitado
+        pinEnabled:
+          type: boolean
+          description: Indicates if PIN is enabled
+        # Habilitada sin contacto?
+        contactlessEnabled:
+          type: boolean
+          description: Indicates if contactless payments are allowed
+        # Límites operativos de la tarjeta
+        limits:
+          type: object
+          description: Operational limits (withdrawals, purchases, etc.)
+          properties:
+            creditLimit:
+              type: number
+              format: double
+            dailyPurchaseLimit:
+              type: number
+              format: double
+            atmWithdrawalLimit:
+              type: number
+              format: double
+        # Metadatos extendidos para trazabilidad
+        metadata:
+          type: object
+          description: Extended attributes for traceability
+          additionalProperties:
+            type: object
+        # Fecha de creación del registro
+        creationDate:
+          type: string
+          format: date-time
+          description: Fecha de creación
+          readOnly: true
+        # Fecha de última actualización
+        updatedDate:
+          type: string
+          format: date-time
+          description: Fecha de actualización
+          readOnly: true
+
+    CardResponse:
+      allOf:
+        - $ref: "#/components/schemas/CardRequest"
+
+    # ===== Associations payloads =====
+    CardAccountsReplaceRequest:
+      type: object
+      required: [ primaryAccountId, accounts ]
+      properties:
+        primaryAccountId:
+          type: string
+          description: Primary account (must exist in accounts list)
+        accounts:
+          type: array
+          description: Ordered list of associated accounts (primary must be included)
+          items:
+            type: string
+
+    AddAccountRequest:
+      type: object
+      required: [ accountId ]
+      properties:
+        accountId:
+          type: string
+          description: Account to be appended at the end
+
+    AccountReorderRequest:
+      type: object
+      required: [ accountIds ]
+      properties:
+        accountIds:
+          type: array
+          items:
+            type: string
+          description: Full ordered list with all currently associated accounts
+
+    SetPrimaryAccountRequest:
+      type: object
+      required: [ accountId ]
+      properties:
+        accountId:
+          type: string
+          description: Must be one of the associated accounts
+
+    # ===== Operations payloads =====
+    DebitPaymentRequest:
+      type: object
+      required: [ operationId, amount ]
+      properties:
+        operationId:
+          type: string
+          description: UUID for idempotency
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        merchant:
+          type: string
+          maxLength: 120
+        channel:
+          type: string
+          example: POS
+
+    DebitWithdrawalRequest:
+      type: object
+      required: [ operationId, amount ]
+      properties:
+        operationId:
+          type: string
+          description: UUID for idempotency
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        atmId:
+          type: string
+        channel:
+          type: string
+          example: ATM
+
+    PayCreditRequest:
+      type: object
+      required: [ operationId, creditId, amount ]
+      properties:
+        operationId:
+          type: string
+          description: UUID for idempotency
+        creditId:
+          type: string
+          description: Credit product identifier in Credits MS
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        note:
+          type: string
+          maxLength: 200
+
+    CardOperationResponse:
+      type: object
+      properties:
+        applied:
+          type: boolean
+        totalAmount:
+          type: number
+          format: double
+        commissionTotal:
+          type: number
+          format: double
+        slices:
+          type: array
+          description: Amount partitions per associated account (fallback order)
+          items:
+            type: object
+            properties:
+              accountId:
+                type: string
+              amount:
+                type: number
+                format: double
+              commissionApplied:
+                type: number
+                format: double
+        message:
+          type: string
+
+    # ===== Queries payloads =====
+    CardMovement:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Transaction id
+        createdDate:
+          type: string
+          format: date-time
+        type:
+          type: string
+          description: Transaction type
+          enum: [ deposit, withdrawal, payment, purchase, charge, create, transfer ]
+        amount:
+          type: number
+          format: double
+        product:
+          type: object
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+              enum: [ savings_account, checking_account, fixed_term_account, personal_credit, business_credit, credit_card ]
+            number:
+              type: string
+              nullable: true
+
+    PrimaryAccountBalance:
+      type: object
+      properties:
+        cardId:
+          type: string
+        accountId:
+          type: string
+        balance:
+          type: number
+          format: double
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
