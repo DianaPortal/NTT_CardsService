@@ -1,25 +1,28 @@
 package com.nttdata.cards_service.service;
 
+import com.nttdata.cards_service.cache.CardsCacheService;
 import com.nttdata.cards_service.integration.accounts.AccountsClient;
 import com.nttdata.cards_service.model.PrimaryAccountBalance;
 import com.nttdata.cards_service.repository.CardRepository;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class PrimaryBalanceService {
     private final CardRepository repo;
     private final AccountsClient accounts;
+    private final CardsCacheService cache;
 
-    public PrimaryBalanceService(CardRepository repo, AccountsClient accounts) {
-        this.repo = repo;
-        this.accounts = accounts;
-    }
+
 
     public Mono<PrimaryAccountBalance> get(String cardId) {
-        return repo.findById(cardId).flatMap(card -> {
-            if (card.getPrimaryAccountId() == null) return Mono.empty();
-            return accounts.getAccount(card.getPrimaryAccountId())
+        return cache.primaryBalance(cardId, () ->
+            repo.findById(cardId)
+                .flatMap(card -> {
+                if (card.getPrimaryAccountId() == null) return Mono.empty();
+                return accounts.getAccount(card.getPrimaryAccountId())
                     .map(acc -> {
                         PrimaryAccountBalance out = new PrimaryAccountBalance();
                         out.setCardId(card.getId());
@@ -27,6 +30,7 @@ public class PrimaryBalanceService {
                         out.setBalance(acc.getBalance());
                         return out;
                     });
-        });
+            })
+        );
     }
 }

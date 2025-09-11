@@ -1,19 +1,14 @@
 package com.nttdata.cards_service.integration.accounts.dto;
+import lombok.*;
 
+@Data
 public class AccountDto {
+
     private String id;
     private String accountType;
     private Double balance;
 
-    public String getId() {
-        return id;
-    }
+    private Boolean active;
 
-    public String getAccountType() {
-        return accountType;
-    }
 
-    public Double getBalance() {
-        return balance;
-    }
 }

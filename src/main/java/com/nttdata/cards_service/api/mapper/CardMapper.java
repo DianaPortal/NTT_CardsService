@@ -24,6 +24,9 @@ public class CardMapper {
     private static <T> JsonNullable<T> toNullable(T v) {
         return v == null ? JsonNullable.undefined() : JsonNullable.of(v);
     }
+    private static <T> T valueOf(JsonNullable<T> v) {
+        return (v == null || !v.isPresent()) ? null : v.get();
+    }
 
 
     public Card toEntity(CardRequest src) {
@@ -35,9 +38,9 @@ public class CardMapper {
         c.setCardType(src.getCardType() == null ? null : src.getCardType().getValue());
         c.setBrand(src.getBrand() == null ? null : src.getBrand().getValue());
         c.setCustomerId(src.getCustomerId());
-        c.setPrimaryAccountId(from(src.getPrimaryAccountId()));
+        c.setPrimaryAccountId(valueOf(src.getPrimaryAccountId()));
         c.setAccounts(src.getAccounts() == null ? new ArrayList<>() : src.getAccounts());
-        c.setCreditId(from(src.getCreditId()));
+        c.setCreditId(valueOf(src.getCreditId()));
         c.setStatus(src.getStatus() == null ? null : CardStatus.valueOf(src.getStatus().getValue()));
         c.setIssueDate(src.getIssueDate());
         c.setExpirationDate(src.getExpirationDate());

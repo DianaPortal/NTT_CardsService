@@ -8,38 +8,40 @@ import com.nttdata.cards_service.repository.CardRepository;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
-
+import lombok.RequiredArgsConstructor;
 import java.util.Comparator;
 import java.util.List;
+import com.nttdata.cards_service.cache.CardsCacheService;
 
 import static com.nttdata.cards_service.service.CardDomainUtils.normalizeAccounts;
 
 @Service
+@RequiredArgsConstructor
 public class MovementQueryService {
 
     private final CardRepository repo;
     private final TransactionsClient tx;
+    private final CardsCacheService cache;
 
-    public MovementQueryService(CardRepository repo, TransactionsClient tx) {
-        this.repo = repo; this.tx = tx;
-    }
 
-    public Flux<CardMovement> lastMovements(String cardId, int limit) {
-        return repo.findById(cardId).flatMapMany(card -> {
-            if ("DEBIT".equals(card.getCardType())) {
-                List<String> products = normalizeAccounts(card.getPrimaryAccountId(), card.getAccounts());
-                return Flux.fromIterable(products)
-                        .flatMap(tx::findByProduct)
-                        .sort(Comparator.comparing(TxGet::getCreatedDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
-                        .take(limit)
-                        .map(t -> mapMovementFromSender(t));
-            } else {
-                return tx.findByProduct(card.getCreditId())
-                        .sort(Comparator.comparing(TxGet::getCreatedDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
-                        .take(limit)
-                        .map(t -> mapMovementFromReceiver(t));
-            }
-        });
+ public Flux<CardMovement> lastMovements(String cardId, int limit) {
+        return cache.movements(cardId, limit, () ->
+            repo.findById(cardId).flatMapMany(card -> {
+                if ("DEBIT".equals(card.getCardType())) {
+                    List<String> products = normalizeAccounts(card.getPrimaryAccountId(), card.getAccounts());
+                    return Flux.fromIterable(products)
+                            .flatMap(tx::findByProduct)
+                            .sort(Comparator.comparing(TxGet::getCreatedDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                            .take(limit)
+                            .map(this::mapMovementFromSender);
+                } else {
+                    return tx.findByProduct(card.getCreditId())
+                            .sort(Comparator.comparing(TxGet::getCreatedDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                            .take(limit)
+                            .map(this::mapMovementFromReceiver);
+                }
+            })
+        );
     }
 
     private CardMovement mapMovementFromSender(TxGet t) {

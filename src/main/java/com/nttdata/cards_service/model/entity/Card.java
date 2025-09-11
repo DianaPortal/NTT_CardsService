@@ -22,6 +22,7 @@ import java.util.Map;
 @Document(collection = "cards")
 public class Card {
     @Id
+    @Indexed(unique = true, sparse = true)
     private String id;
 
     @Indexed(unique = true, sparse = true)
