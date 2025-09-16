@@ -1,23 +1,19 @@
 package com.nttdata.cards_service.cache;
 
-import com.nttdata.cards_service.model.CardMovement;
-import com.nttdata.cards_service.model.CardResponse;
-import com.nttdata.cards_service.model.PrimaryAccountBalance;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.data.redis.core.ReactiveValueOperations;
-import org.springframework.test.util.ReflectionTestUtils;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
+import com.nttdata.cards_service.model.*;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.*;
+import org.mockito.*;
+import org.mockito.junit.jupiter.*;
+import org.springframework.data.redis.core.*;
+import org.springframework.test.util.*;
+import reactor.core.publisher.*;
+import reactor.test.*;
 
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
+import java.time.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
+
 import static com.nttdata.cards_service.cache.CacheKeys.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -25,21 +21,28 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class CardsCacheServiceTest {
 
-  @Mock ReactiveRedisTemplate<String, CardResponse> cardRedis;
-  @Mock ReactiveRedisTemplate<String, PrimaryAccountBalance> pbRedis;
-  @Mock ReactiveRedisTemplate<String, CardMovement[]> movRedis;
+  @Mock
+  ReactiveRedisTemplate<String, CardResponse> cardRedis;
+  @Mock
+  ReactiveRedisTemplate<String, PrimaryAccountBalance> pbRedis;
+  @Mock
+  ReactiveRedisTemplate<String, CardMovement[]> movRedis;
 
-  @Mock ReactiveValueOperations<String, CardResponse> cardOps;
-  @Mock ReactiveValueOperations<String, PrimaryAccountBalance> pbOps;
-  @Mock ReactiveValueOperations<String, CardMovement[]> movOps;
+  @Mock
+  ReactiveValueOperations<String, CardResponse> cardOps;
+  @Mock
+  ReactiveValueOperations<String, PrimaryAccountBalance> pbOps;
+  @Mock
+  ReactiveValueOperations<String, CardMovement[]> movOps;
+  CardsCacheService service;
 
-  @InjectMocks CardsCacheService service;
 
   @BeforeEach
   void init() {
-    when(cardRedis.opsForValue()).thenReturn(cardOps);
-    when(pbRedis.opsForValue()).thenReturn(pbOps);
-    when(movRedis.opsForValue()).thenReturn(movOps);
+    lenient().when(cardRedis.opsForValue()).thenReturn(cardOps);
+    lenient().when(pbRedis.opsForValue()).thenReturn(pbOps);
+    lenient().when(movRedis.opsForValue()).thenReturn(movOps);
+    service = new CardsCacheService(cardRedis, pbRedis, movRedis);
     ReflectionTestUtils.setField(service, "cardByIdTtl", Duration.ofMinutes(5));
     ReflectionTestUtils.setField(service, "primaryBalanceTtl", Duration.ofSeconds(30));
     ReflectionTestUtils.setField(service, "movementsTtl", Duration.ofSeconds(45));

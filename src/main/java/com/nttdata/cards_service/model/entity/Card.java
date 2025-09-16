@@ -2,14 +2,13 @@ package com.nttdata.cards_service.model.entity;
 
 
 import com.nttdata.cards_service.model.CardRequestLimits;
-import com.nttdata.cards_service.model.entity.enums.CardStatus;
 import com.nttdata.cards_service.model.value.StoredOperation;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-
+import  com.nttdata.cards_service.model.CardResponse.StatusEnum;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -37,7 +36,7 @@ public class Card {
     //CREDIT
     private String creditId;
 
-    private CardStatus status = CardStatus.ACTIVE;
+    private StatusEnum status = StatusEnum.ACTIVE;
     private LocalDate issueDate;        //Fecha de emisión de la tarjeta
     private LocalDate expirationDate;   //Fecha de vencimiento de la tarjeta
 
@@ -56,5 +55,8 @@ public class Card {
 
     @Version
     private Long version;
+
+    /*
+    * */
 
 }

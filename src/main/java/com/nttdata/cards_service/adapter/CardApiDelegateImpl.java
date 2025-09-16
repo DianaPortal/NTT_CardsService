@@ -1,4 +1,4 @@
-package com.nttdata.cards_service.api;
+package com.nttdata.cards_service.adapter;
 
 import com.nttdata.cards_service.model.*;
 import com.nttdata.cards_service.service.CardService;
@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import com.nttdata.cards_service.api.ApiApiDelegate;
 
 @Service
 @RequiredArgsConstructor

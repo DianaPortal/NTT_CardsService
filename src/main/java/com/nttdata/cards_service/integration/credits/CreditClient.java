@@ -1,6 +1,5 @@
 package com.nttdata.cards_service.integration.credits;
 
-import com.nttdata.cards_service.integration.credits.dto.CreditBalance;
 import com.nttdata.cards_service.integration.credits.dto.CreditPaymentRequest;
 import com.nttdata.cards_service.integration.credits.dto.OverdueRes;
 import lombok.extern.slf4j.Slf4j;
@@ -21,14 +20,14 @@ import static org.springframework.http.HttpStatus.GATEWAY_TIMEOUT;
 
 @Component
 @Slf4j
-public class CreditsClient {
+public class CreditClient {
     private final WebClient web;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final TimeLimiterRegistry timeLimiterRegistry;
 
-    public CreditsClient(WebClient creditsWebClient,
-                         CircuitBreakerRegistry circuitBreakerRegistry,
-                         TimeLimiterRegistry timeLimiterRegistry) {
+    public CreditClient(@Qualifier("creditsWebClient")WebClient creditsWebClient,
+                        CircuitBreakerRegistry circuitBreakerRegistry,
+                        TimeLimiterRegistry timeLimiterRegistry) {
         this.web = creditsWebClient;
         this.circuitBreakerRegistry = circuitBreakerRegistry;
         this.timeLimiterRegistry = timeLimiterRegistry;

@@ -42,8 +42,10 @@ public class DebitOrchestratorService {
   private Mono<StoredOperation> process(Card card, String operationId, double amount,
                                         String opKind, Map<String, Object> metadata, String txType) {
 
+    /*if (!"DEBIT".equals(card.getCardType())) return Mono.error(new IllegalStateException("Not a DEBIT card"));
+    if (!"ACTIVE".equals(card.getStatus())) return Mono.error(new IllegalStateException("Card is not ACTIVE"));*/
     if (!"DEBIT".equals(card.getCardType())) return Mono.error(new IllegalStateException("Not a DEBIT card"));
-    if (!"ACTIVE".equals(card.getStatus())) return Mono.error(new IllegalStateException("Card is not ACTIVE"));
+    if (card.getStatus() != CardResponse.StatusEnum.ACTIVE) return Mono.error(new IllegalStateException("Card is not ACTIVE"));
 
     // Validación de límites (simple; puedes extenderla con límites por transacción/día)
     if ("withdrawal".equalsIgnoreCase(txType) && card.getLimits() != null && card.getLimits().getAtmWithdrawalLimit() != null) {
@@ -63,13 +65,13 @@ public class DebitOrchestratorService {
         // Mapa preservando orden de asociación: accountId -> balance
         .collectMap(Map.Entry::getKey, Map.Entry::getValue, java.util.LinkedHashMap::new)
         .flatMap((var balances) -> {
-          List<Slice> plan = planSlices(amount, (LinkedHashMap<String, Double>) balances);
+          List<CardOperationResponseSlices> plan = planSlices(amount, (LinkedHashMap<String, Double>) balances);
 
           return Flux.fromIterable(plan)
               .index()
               .concatMap(t -> {
                 long idx = t.getT1();
-                Slice s = t.getT2();
+                CardOperationResponseSlices s = t.getT2();
 
                 BalanceOperationRequest req = new BalanceOperationRequest();
                 req.setOperationId(operationId + "#" + idx);

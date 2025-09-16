@@ -1,9 +1,8 @@
-package com.nttdata.cards_service.api.mapper;
+package com.nttdata.cards_service.adapter.mapper;
 
 import com.nttdata.cards_service.model.CardRequest;
 import com.nttdata.cards_service.model.CardResponse;
 import com.nttdata.cards_service.model.entity.Card;
-import com.nttdata.cards_service.model.entity.enums.CardStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Component;
@@ -41,7 +40,7 @@ public class CardMapper {
         c.setPrimaryAccountId(valueOf(src.getPrimaryAccountId()));
         c.setAccounts(src.getAccounts() == null ? new ArrayList<>() : src.getAccounts());
         c.setCreditId(valueOf(src.getCreditId()));
-        c.setStatus(src.getStatus() == null ? null : CardStatus.valueOf(src.getStatus().getValue()));
+        c.setStatus(src.getStatus() == null ? null : CardResponse.StatusEnum.valueOf(src.getStatus().getValue()));
         c.setIssueDate(src.getIssueDate());
         c.setExpirationDate(src.getExpirationDate());
         c.setIsVirtual(src.getIsVirtual());
