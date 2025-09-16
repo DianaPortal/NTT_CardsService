@@ -29,7 +29,7 @@ public class AccountsClient {
   private final WebClient web;
   private final CircuitBreakerRegistry circuitBreakerRegistry;
   private final TimeLimiterRegistry timeLimiterRegistry;
-
+  private String baseUrl;
   public AccountsClient(@Qualifier("accountsWebClient") WebClient webClient,
                         CircuitBreakerRegistry circuitBreakerRegistry,
                         TimeLimiterRegistry timeLimiterRegistry) {
@@ -42,7 +42,7 @@ public class AccountsClient {
   public Mono<AccountDto> getAccount(String id) {
     CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("accounts");
     log.debug("GET Accounts /api/accounts/{}", id);
-    return web.get().uri("/api/accounts/{id}", id)
+    return web.get().uri(baseUrl + "/accounts/{id}", id)
         .retrieve().bodyToMono(AccountDto.class)
         .transformDeferred(CircuitBreakerOperator.of(cb))
         .transformDeferred(TimeLimiterOperator.of(timeLimiterRegistry.timeLimiter("accounts")))
@@ -54,7 +54,7 @@ public class AccountsClient {
   public Mono<BalanceOperationResponse> applyBalanceOperation(String accountId, BalanceOperationRequest req) {
     CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("accounts");
     log.debug("POST Accounts /api/accounts/{}/balance-ops body={}", accountId, req);
-    return web.post().uri("/api/accounts/{id}/balance-ops", accountId)
+    return web.post().uri(baseUrl + "/accounts/{id}/balance-ops", accountId)
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(req)
         .retrieve().bodyToMono(BalanceOperationResponse.class)

@@ -1,12 +1,8 @@
 package com.nttdata.cards_service.service;
 
-import com.nttdata.cards_service.integration.accounts.dto.*;
-import com.nttdata.cards_service.integration.credits.*;
 import com.nttdata.cards_service.integration.credits.dto.*;
 import com.nttdata.cards_service.integration.transactions.*;
 import com.nttdata.cards_service.integration.transactions.dto.*;
-import com.nttdata.cards_service.model.*;
-import com.nttdata.cards_service.model.entity.*;
 import com.nttdata.cards_service.model.value.*;
 import lombok.*;
 import org.springframework.stereotype.*;
@@ -19,7 +15,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class PayCreditService {
   private final DebitOrchestratorService debit;
-  private final CreditsClient credits;
+  private final com.nttdata.cards_service.integration.credits.CreditClient credits;
   private final TransactionsClient tx;
   private final CardRepository cardRepo;
 
@@ -34,6 +30,8 @@ public class PayCreditService {
               CreditPaymentRequest req = new CreditPaymentRequest();//CreditPaymentRequest(amount,notes)
               req.setPayerCustomerId(card.getCustomerId());
               req.setChannel("CARD");
+              req.setAmount(amount);
+              req.setNote(note);
 
               return credits.applyPayment(creditId, req)
                   .then(Mono.defer(() -> {

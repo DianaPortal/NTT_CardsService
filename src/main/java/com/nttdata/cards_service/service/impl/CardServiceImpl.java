@@ -1,7 +1,6 @@
 package com.nttdata.cards_service.service.impl;
 
-import com.nttdata.cards_service.api.mapper.CardMapper;
-import com.nttdata.cards_service.integration.credits.CreditsClient;
+import com.nttdata.cards_service.adapter.mapper.CardMapper;
 import com.nttdata.cards_service.integration.credits.dto.OverdueRes;
 import com.nttdata.cards_service.model.*;
 import com.nttdata.cards_service.model.entity.Card;
@@ -27,7 +26,7 @@ import static com.nttdata.cards_service.service.CardDomainUtils.normalizeAccount
 public class CardServiceImpl implements CardService {
 
     private final CardRepository repo;
-    private final CreditsClient credits;
+    private final com.nttdata.cards_service.integration.credits.CreditClient credits;
     private final DebitOrchestratorService debit;
     private final PayCreditService payCredit;
     private final MovementQueryService movements;

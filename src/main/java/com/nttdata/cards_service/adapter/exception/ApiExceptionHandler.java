@@ -1,4 +1,4 @@
-package com.nttdata.cards_service.api.exception;
+package com.nttdata.cards_service.adapter.exception;
 
 import com.nttdata.cards_service.model.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;

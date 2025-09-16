@@ -1,5 +1,6 @@
 package com.nttdata.cards_service.config;
 
+import com.nttdata.cards_service.security.*;
 import io.netty.channel.*;
 import io.netty.handler.timeout.*;
 import lombok.extern.slf4j.*;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.*;
 import org.springframework.context.annotation.*;
 import org.springframework.http.*;
 import org.springframework.http.client.reactive.*;
+import org.springframework.security.core.context.*;
 import org.springframework.web.reactive.function.client.*;
 import reactor.netty.http.client.*;
 
@@ -34,23 +36,55 @@ public class WebClientConfig {
             .build());
   }
 
+  // Relay del Authorization: Bearer recibido al backend destino
+  @Bean
+  public ExchangeFilterFunction bearerRelayFilter() {
+    return (request, next) ->
+        ReactiveSecurityContextHolder.getContext()
+            .map(SecurityContext::getAuthentication)
+            .map(auth -> {
+              final String token = (auth instanceof JwtPreAuthenticatedToken)
+                  ? (String) auth.getCredentials()
+                  : null;
+              ClientRequest.Builder builder = ClientRequest.from(request);
+              if (token != null && !token.isBlank()) {
+                builder.headers(h -> h.set(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+              }
+              return builder.build();
+            })
+            .defaultIfEmpty(request)
+            .flatMap(next::exchange);
+  }
+
 
   //Cliente hacia el microservice de cuentas
   @Bean
-  WebClient accountsWebClient(@Value("${service.accounts.base-url}") String url) {
-    return webClientBuilder().baseUrl(url).build();
+  public WebClient accountsWebClient(@Value("${service.accounts.base-url}") String url,
+                                     ExchangeFilterFunction bearerRelayFilter) {
+    return webClientBuilder()
+        .baseUrl(url)
+        .filter(bearerRelayFilter)
+        .build();
   }
 
   //Cliente hacia el microservice de créditos
   @Bean
-  WebClient creditsWebClient(@Value("${service.credits.base-url}") String url) {
-    return webClientBuilder().baseUrl(url).build();
+  public WebClient creditsWebClient(@Value("${service.credits.base-url}") String url,
+                                    ExchangeFilterFunction bearerRelayFilter) {
+    return webClientBuilder()
+        .baseUrl(url)
+        .filter(bearerRelayFilter)
+        .build();
   }
 
   //Cliente hacia el microservice de transacciones
   @Bean
-  WebClient transactionsWebClient(@Value("${service.transactions.base-url}") String url) {
-    return webClientBuilder().baseUrl(url).build();
+  public WebClient transactionsWebClient(@Value("${service.transactions.base-url}") String url,
+                                         ExchangeFilterFunction bearerRelayFilter) {
+    return webClientBuilder()
+        .baseUrl(url)
+        .filter(bearerRelayFilter)
+        .build();
   }
 
   private ExchangeFilterFunction logRequest() {
