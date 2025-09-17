@@ -15,6 +15,8 @@ import reactor.netty.http.client.*;
 import java.time.*;
 import java.util.concurrent.*;
 
+import static reactor.core.publisher.Mono.just;
+
 @Configuration
 @Slf4j
 public class WebClientConfig {
@@ -91,7 +93,7 @@ public class WebClientConfig {
     return ExchangeFilterFunction.ofRequestProcessor(req -> {
       log.debug("WebClient Request: {} {}", req.method(), req.url());
       req.headers().forEach((name, values) -> values.forEach(value -> log.debug("{}={}", name, value)));
-      return reactor.core.publisher.Mono.just(req);
+      return just(req);
     });
   }
 
@@ -100,7 +102,7 @@ public class WebClientConfig {
       log.debug("WebClient Response: status={}", res.statusCode());
       res.headers().asHttpHeaders()
           .forEach((name, values) -> values.forEach(value -> log.debug("{}={}", name, value)));
-      return reactor.core.publisher.Mono.just(res);
+      return just(res);
     });
   }
 }
