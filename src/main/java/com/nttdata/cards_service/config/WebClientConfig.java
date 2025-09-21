@@ -1,6 +1,6 @@
 package com.nttdata.cards_service.config;
 
-import com.nttdata.cards_service.security.*;
+
 import io.netty.channel.*;
 import io.netty.handler.timeout.*;
 import lombok.extern.slf4j.*;
@@ -8,13 +8,18 @@ import org.springframework.beans.factory.annotation.*;
 import org.springframework.context.annotation.*;
 import org.springframework.http.*;
 import org.springframework.http.client.reactive.*;
-import org.springframework.security.core.context.*;
+import org.springframework.security.oauth2.server.resource.web.reactive.function.client.*;
 import org.springframework.web.reactive.function.client.*;
 import reactor.netty.http.client.*;
 
 import java.time.*;
 import java.util.concurrent.*;
 
+<<<<<<< Updated upstream
+=======
+import static reactor.core.publisher.Mono.*;
+
+>>>>>>> Stashed changes
 @Configuration
 @Slf4j
 public class WebClientConfig {
@@ -29,6 +34,7 @@ public class WebClientConfig {
     return WebClient.builder()
         .clientConnector(new ReactorClientHttpConnector(httpClient))
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .filter(new ServerBearerExchangeFilterFunction())
         .filter(logRequest())
         .filter(logResponse())
         .exchangeStrategies(ExchangeStrategies.builder()
@@ -36,38 +42,19 @@ public class WebClientConfig {
             .build());
   }
 
-  // Relay del Authorization: Bearer recibido al backend destino
-  @Bean
-  public ExchangeFilterFunction bearerRelayFilter() {
-    return (request, next) ->
-        ReactiveSecurityContextHolder.getContext()
-            .map(SecurityContext::getAuthentication)
-            .map(auth -> {
-              final String token = (auth instanceof JwtPreAuthenticatedToken)
-                  ? (String) auth.getCredentials()
-                  : null;
-              ClientRequest.Builder builder = ClientRequest.from(request);
-              if (token != null && !token.isBlank()) {
-                builder.headers(h -> h.set(HttpHeaders.AUTHORIZATION, "Bearer " + token));
-              }
-              return builder.build();
-            })
-            .defaultIfEmpty(request)
-            .flatMap(next::exchange);
-  }
 
-
-  //Cliente hacia el microservice de cuentas
+  // Cliente hacia el microservice de cuentas
   @Bean
   public WebClient accountsWebClient(@Value("${service.accounts.base-url}") String url,
                                      ExchangeFilterFunction bearerRelayFilter) {
+    // 🔹 CAMBIO: agregamos baseUrl sin barra extra y mantenemos filter de token
     return webClientBuilder()
-        .baseUrl(url)
+        .baseUrl(url) // url debe terminar sin '/'
         .filter(bearerRelayFilter)
         .build();
   }
 
-  //Cliente hacia el microservice de créditos
+  // Cliente hacia el microservice de créditos
   @Bean
   public WebClient creditsWebClient(@Value("${service.credits.base-url}") String url,
                                     ExchangeFilterFunction bearerRelayFilter) {
@@ -77,7 +64,7 @@ public class WebClientConfig {
         .build();
   }
 
-  //Cliente hacia el microservice de transacciones
+  // Cliente hacia el microservice de transacciones
   @Bean
   public WebClient transactionsWebClient(@Value("${service.transactions.base-url}") String url,
                                          ExchangeFilterFunction bearerRelayFilter) {

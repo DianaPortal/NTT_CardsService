@@ -18,6 +18,7 @@
     <properties>
         <java.version>11</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Versiones compatibles -->
         <checkstyle.version>10.26.1</checkstyle.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
@@ -117,7 +118,11 @@
             <version>4.10.0</version>
 
         </dependency>
-
+        <!--Eureka-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
 
         <!-- Resilience4j -->
         <dependency>
@@ -148,6 +153,7 @@
             <version>1.7.1</version>
         </dependency>
 
+<<<<<<< Updated upstream
         <!--Redis-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -158,29 +164,21 @@
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
+=======
+
+        <!-- Seguridad -->
+>>>>>>> Stashed changes
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
 
-        <!-- JJWT -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>${jjwt.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
+
+
 
     </dependencies>
 
@@ -197,7 +195,45 @@
             </plugins>
         </pluginManagement>
 
+        <resources>
+            <!-- Solo .properties con filtering -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+
+            <!-- Todo lo demás SIN filtering -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+
+
+
+
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version> <!-- más robusto que 3.2.0 -->
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <!-- NO filtrar .properties ni .yml: copia en bruto -->
+                    <nonFilteredFileExtensions>
+                        <nonFilteredFileExtension>properties</nonFilteredFileExtension>
+                        <nonFilteredFileExtension>yml</nonFilteredFileExtension>
+                        <nonFilteredFileExtension>yaml</nonFilteredFileExtension>
+                    </nonFilteredFileExtensions>
+                </configuration>
+            </plugin>
+
             <!--Plugin Jacoco -->
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -273,6 +309,9 @@
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.9.1.2184</version>
             </plugin>
+
+
+
 <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -293,6 +332,7 @@
                     <excludes>**/target/**,**/generated-sources/**</excludes>
                     <consoleOutput>true</consoleOutput>
                     <logViolationsToConsole>true</logViolationsToConsole>
+
                 </configuration>
                 <dependencies>
                     <!-- Versión compatible de Checkstyle -->
