@@ -1,6 +1,6 @@
 package com.nttdata.cards_service.kafka;
 
-import com.nttdata.cards_service.kafka.events.*;
+import com.nttdata.cards_service.kafka.events.CardLinkRequestEvent;
 import com.nttdata.cards_service.repository.*;
 import lombok.*;
 import lombok.extern.slf4j.*;
@@ -18,19 +18,21 @@ public class CardLinkRequestConsumer {
 
   @KafkaListener(topics = "${app.topics.card-link-request}", groupId = "${spring.kafka.consumer.group-id}")
   public void onLinkRequest(CardLinkRequestEvent evt) {
-    log.info("[CARDS] link.request phone={} cardId={} traceId={}", evt.getPhone(), evt.getDebitCardId(), evt.getTraceId());
+    log.info("[CARDS] Solicitud de enlace recibida | phone={} | cardId={} | traceId={}", evt.getPhone(), evt.getDebitCardId(), evt.getTraceId());
 
     repo.findById(evt.getDebitCardId())
-        .switchIfEmpty(Mono.error(new IllegalArgumentException("Card not found")))
+        .switchIfEmpty(Mono.error(new IllegalArgumentException("Tarjeta no encontrada")))
         .flatMap(card -> {
-          if (!"DEBIT".equalsIgnoreCase(card.getCardType()))
-            return Mono.error(new IllegalStateException("Not a DEBIT card"));
-          // Si manejas estado, valida ACTIVE aquí (ej: card.getStatus())
-          return result.publishOk(evt.getPhone(), evt.getDebitCardId(), evt.getTraceId());
+          if (!"DEBIT".equalsIgnoreCase(card.getCardType())) {
+              return Mono.error(new IllegalStateException("La tarjeta no es de tipo DEBIT"));
+          }
+            log.info("[CARDS] Validaciones OK | phone={} | cardId={} | tipo={}", evt.getPhone(), evt.getDebitCardId(), card.getCardType());
+            return result.publishOk(evt.getPhone(), evt.getDebitCardId(), evt.getTraceId());
         })
         .doOnError(e -> {
-          log.warn("[CARDS] link.request REJECTED: {}", e.getMessage());
-          result.publishRejected(evt.getPhone(), evt.getDebitCardId(), evt.getTraceId(), e.getMessage()).subscribe();
+            log.warn("[CARDS] Enlace RECHAZADO | phone={} | cardId={} | motivo={} | traceId={}", evt.getPhone(), evt.getDebitCardId(), e.getMessage(), evt.getTraceId());
+          result.publishRejected(evt.getPhone(), evt.getDebitCardId(), evt.getTraceId(), e.getMessage())
+                  .subscribe();
         })
         .subscribe();
   }
