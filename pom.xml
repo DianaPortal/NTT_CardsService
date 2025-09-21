@@ -22,8 +22,8 @@
         <!-- Versiones compatibles -->
         <checkstyle.version>10.26.1</checkstyle.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
-        <!-- <jjwt.version>0.11.5</jjwt.version> -->
-        <jjwt.version>0.12.5</jjwt.version>
+
+
     </properties>
 
     <dependencyManagement>
@@ -112,7 +112,7 @@
             <version>2.9.0</version>
         </dependency>
 
-         <dependency>
+        <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>mockwebserver</artifactId>
             <version>4.10.0</version>
@@ -153,7 +153,7 @@
             <version>1.7.1</version>
         </dependency>
 
-<<<<<<< Updated upstream
+
         <!--Redis-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -164,10 +164,10 @@
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
-=======
+
 
         <!-- Seguridad -->
->>>>>>> Stashed changes
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
@@ -178,6 +178,12 @@
         </dependency>
 
 
+        <!-- Kafka -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+
+        </dependency>
 
 
     </dependencies>
@@ -312,15 +318,15 @@
 
 
 
-<!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
-                <configuration>
-                    <skipTests>true</skipTests>
-                </configuration>
-            </plugin>-->
+            <!--
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-surefire-plugin</artifactId>
+                            <version>2.22.2</version>
+                            <configuration>
+                                <skipTests>true</skipTests>
+                            </configuration>
+                        </plugin>-->
             <!--checkstyle-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

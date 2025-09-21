@@ -15,11 +15,9 @@ import reactor.netty.http.client.*;
 import java.time.*;
 import java.util.concurrent.*;
 
-<<<<<<< Updated upstream
-=======
+
 import static reactor.core.publisher.Mono.*;
 
->>>>>>> Stashed changes
 @Configuration
 @Slf4j
 public class WebClientConfig {
