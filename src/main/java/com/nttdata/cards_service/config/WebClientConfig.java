@@ -1,6 +1,5 @@
 package com.nttdata.cards_service.config;
 
-
 import io.netty.channel.*;
 import io.netty.handler.timeout.*;
 import lombok.extern.slf4j.*;
@@ -15,20 +14,18 @@ import reactor.netty.http.client.*;
 import java.time.*;
 import java.util.concurrent.*;
 
-
-import static reactor.core.publisher.Mono.*;
-
 @Configuration
 @Slf4j
 public class WebClientConfig {
 
-  private WebClient.Builder webClientBuilder() {
+  private WebClient.Builder rawBuilder() {
     HttpClient httpClient = HttpClient.create()
         .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 3000)
         .responseTimeout(Duration.ofSeconds(2))
         .doOnConnected(conn -> conn
             .addHandlerLast(new ReadTimeoutHandler(2, TimeUnit.SECONDS))
             .addHandlerLast(new WriteTimeoutHandler(2, TimeUnit.SECONDS)));
+
     return WebClient.builder()
         .clientConnector(new ReactorClientHttpConnector(httpClient))
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -40,42 +37,33 @@ public class WebClientConfig {
             .build());
   }
 
-
-  // Cliente hacia el microservice de cuentas
   @Bean
-  public WebClient accountsWebClient(@Value("${service.accounts.base-url}") String url,
-                                     ExchangeFilterFunction bearerRelayFilter) {
-    // 🔹 CAMBIO: agregamos baseUrl sin barra extra y mantenemos filter de token
-    return webClientBuilder()
-        .baseUrl(url) // url debe terminar sin '/'
-        .filter(bearerRelayFilter)
-        .build();
+  public WebClient accountsWebClient(
+      @Value("${service.accounts.url:${service.accounts.base-url}}") String url) {
+    String base = url.trim();
+    log.info("[ACCOUNTS] baseUrl={}", base);
+    return rawBuilder().baseUrl(base).build();
   }
 
-  // Cliente hacia el microservice de créditos
   @Bean
-  public WebClient creditsWebClient(@Value("${service.credits.base-url}") String url,
-                                    ExchangeFilterFunction bearerRelayFilter) {
-    return webClientBuilder()
-        .baseUrl(url)
-        .filter(bearerRelayFilter)
-        .build();
+  public WebClient creditsWebClient(
+      @Value("${service.credits.url:${service.credits.base-url}}") String url) {
+    String base = url.trim();
+    log.info("[CREDITS] baseUrl={}", base);
+    return rawBuilder().baseUrl(base).build();
   }
 
-  // Cliente hacia el microservice de transacciones
   @Bean
-  public WebClient transactionsWebClient(@Value("${service.transactions.base-url}") String url,
-                                         ExchangeFilterFunction bearerRelayFilter) {
-    return webClientBuilder()
-        .baseUrl(url)
-        .filter(bearerRelayFilter)
-        .build();
+  public WebClient transactionsWebClient(
+      @Value("${service.transactions.url:${service.transactions.base-url}}") String url) {
+    String base = url.trim();
+    log.info("[TRANSACTIONS] baseUrl={}", base);
+    return rawBuilder().baseUrl(base).build();
   }
 
   private ExchangeFilterFunction logRequest() {
     return ExchangeFilterFunction.ofRequestProcessor(req -> {
       log.debug("WebClient Request: {} {}", req.method(), req.url());
-      req.headers().forEach((name, values) -> values.forEach(value -> log.debug("{}={}", name, value)));
       return reactor.core.publisher.Mono.just(req);
     });
   }
@@ -83,8 +71,6 @@ public class WebClientConfig {
   private ExchangeFilterFunction logResponse() {
     return ExchangeFilterFunction.ofResponseProcessor(res -> {
       log.debug("WebClient Response: status={}", res.statusCode());
-      res.headers().asHttpHeaders()
-          .forEach((name, values) -> values.forEach(value -> log.debug("{}={}", name, value)));
       return reactor.core.publisher.Mono.just(res);
     });
   }

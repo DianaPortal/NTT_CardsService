@@ -20,7 +20,7 @@ import com.nttdata.cards_service.cache.CardsCacheService;
 import java.time.OffsetDateTime;
 import java.util.*;
 import static com.nttdata.cards_service.service.CardDomainUtils.normalizeAccounts;
-
+import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class CardServiceImpl implements CardService {
@@ -208,21 +208,34 @@ public class CardServiceImpl implements CardService {
     @Override
     public Mono<CardOperationResponse> debitPayment(String id, DebitPaymentRequest req) {
         return debit.debit(id, req.getOperationId(), req.getAmount(),
-                        "DEBIT_PAYMENT", java.util.Map.of("channel", req.getChannel(), "merchant", req.getMerchant()), "purchase")
+                        "DEBIT_PAYMENT", Map.of("channel",
+                    req.getChannel(), "merchant",
+                    req.getMerchant()), "purchase")
                 .map(StoredOperation::getResult);
     }
 
     @Override
     public Mono<CardOperationResponse> debitWithdrawal(String id, DebitWithdrawalRequest req) {
-        return debit.debit(id, req.getOperationId(), req.getAmount(),
-                        "DEBIT_WITHDRAWAL", java.util.Map.of("channel", req.getChannel(), "atmId", req.getAtmId()), "withdrawal")
+        return debit.debit(
+                    id,
+                    req.getOperationId(),
+                    req.getAmount(),
+                        "DEBIT_WITHDRAWAL",
+                        Map.of("channel",
+                    req.getChannel(), "atmId",
+                    req.getAtmId()), "withdrawal")
                 .map(StoredOperation::getResult);
     }
 
     @Override
     public Mono<CardOperationResponse> payCreditWithDebitCard(String id, PayCreditRequest req) {
-        return payCredit.pay(id, req.getOperationId(), req.getCreditId(), req.getAmount(), req.getNote())
-                .map(StoredOperation::getResult);
+        return payCredit.pay(
+                id,
+                req.getOperationId(),
+                req.getCreditId(),
+                req.getAmount(),
+                req.getNote())
+            .map(StoredOperation::getResult);
     }
 
     @Override
