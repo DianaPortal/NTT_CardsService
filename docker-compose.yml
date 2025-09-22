@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  cards-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ntt/cards-service:0.0.1
+    container_name: cards-service
+    environment:
+      # Config Server
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "true"
+      SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 10
+      SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL: 2000
+      SPRING_CLOUD_CONFIG_RETRY_MULTIPLIER: 1.5
+      SPRING_CLOUD_CONFIG_RETRY_MAX_INTERVAL: 8000
+
+      # Overrides si en el repo siguen con localhost
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      APP_AUTH_ALLOWED_ISSUERS: "http://keycloak:8091/realms/nttdatabank,http://localhost:8091/realms/nttdatabank"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8091/realms/nttdatabank
+
+      # Servicios que todavía no están dockerizadosa
+      SERVICE_ACCOUNTS_BASE_URL: http://host.docker.internal:8085/api
+      SERVICE_CREDITS_BASE_URL: http://host.docker.internal:8585/api
+      SERVICE_TRANSACTIONS_BASE_URL: http://host.docker.internal:8083/api/v1
+
+      JAVA_OPTS: -XX:MaxRAMPercentage=75.0
+    ports:
+      - "8090:8090"
+    networks:
+      - infra-net
+    restart: unless-stopped
+
+networks:
+  infra-net:
+    external: true

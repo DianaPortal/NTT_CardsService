@@ -1,0 +1,14 @@
+target/
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+.git
+.gitignore
+.gitattributes
+.idea/
+*.iml
+*.log
+.DS_Store
+Thumbs.db
+surefire-reports/
+failsafe-reports/
+jacoco.exec

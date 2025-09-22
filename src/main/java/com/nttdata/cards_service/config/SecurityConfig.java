@@ -1,4 +1,5 @@
 package com.nttdata.cards_service.config;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -13,6 +14,13 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @EnableReactiveMethodSecurity
 public class SecurityConfig {
 
+  private final CustomReactiveJwtDecoder customJwtDecoder;
+
+  //INYECTAR EL DECODER PERSONALIZADO
+  public SecurityConfig(CustomReactiveJwtDecoder customJwtDecoder) {
+    this.customJwtDecoder = customJwtDecoder;
+  }
+
   @Bean
   SecurityWebFilterChain security(ServerHttpSecurity http) {
     return http
@@ -21,7 +29,9 @@ public class SecurityConfig {
             .pathMatchers("/actuator/**").permitAll()
             .anyExchange().hasAuthority("SCOPE_Partners"))
         .oauth2ResourceServer(oauth -> oauth
-            .jwt(jwt -> jwt.jwtAuthenticationConverter(scpAndRoles())))
+            .jwt(jwt -> jwt
+                .jwtDecoder(customJwtDecoder)  //NUESTRO DECODER PERSONALIZADO
+                .jwtAuthenticationConverter(scpAndRoles())))
         .build();
   }
 

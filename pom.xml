@@ -165,7 +165,6 @@
         </dependency>
 
 
-
         <!-- Seguridad -->
 
         <dependency>
@@ -185,6 +184,10 @@
 
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
 
     </dependencies>
 
@@ -222,8 +225,6 @@
         </resources>
 
 
-
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -247,14 +248,18 @@
                 <version>0.8.8</version>
                 <executions>
                     <execution>
-                        <goals><goal>prepare-agent</goal></goals>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
                     </execution>
 
                     <!-- GENERAR jacoco.xml (para Sonar y  site) -->
                     <execution>
                         <id>report</id>
                         <phase>verify</phase>
-                        <goals><goal>report</goal></goals>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
                         <configuration>
                             <excludes>
                                 <!-- Generados por OpenAPI -->
@@ -273,7 +278,9 @@
 
                     <execution>
                         <id>check</id>
-                        <goals><goal>check</goal></goals>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
                         <configuration>
                             <excludes>
                                 <!-- Generados por OpenAPI -->
@@ -315,7 +322,6 @@
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.9.1.2184</version>
             </plugin>
-
 
 
             <!--
