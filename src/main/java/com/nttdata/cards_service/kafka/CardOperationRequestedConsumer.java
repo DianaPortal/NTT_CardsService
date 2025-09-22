@@ -1,18 +1,19 @@
 package com.nttdata.cards_service.kafka;
 
-import com.nttdata.cards_service.integration.accounts.AccountsClient;
-import com.nttdata.cards_service.integration.accounts.dto.BalanceOperationRequest;
+import com.nttdata.cards_service.integration.accounts.*;
+import com.nttdata.cards_service.integration.accounts.dto.*;
 import com.nttdata.cards_service.kafka.events.*;
-import com.nttdata.cards_service.model.entity.Card;
-import com.nttdata.cards_service.repository.CardRepository;
-import com.nttdata.cards_service.service.DebitOrchestratorService;
-import com.nttdata.cards_service.model.value.StoredOperation;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
-import java.math.BigDecimal;
+import com.nttdata.cards_service.model.entity.*;
+import com.nttdata.cards_service.model.value.*;
+import com.nttdata.cards_service.repository.*;
+import com.nttdata.cards_service.service.*;
+import lombok.*;
+import lombok.extern.slf4j.*;
+import org.springframework.kafka.annotation.*;
+import org.springframework.stereotype.*;
+import reactor.core.publisher.*;
+
+import java.math.*;
 
 
 @Service
@@ -45,7 +46,7 @@ public class CardOperationRequestedConsumer {
                   evt.getOperationId(),
                   evt.getAmount().doubleValue(),
                   "YANKI_P2P_DEBIT",
-                  java.util.Map.of("source","yanki","use","p2p","noRefund","true"),
+                  java.util.Map.of("source", "yanki", "use", "p2p", "noRefund", "true"),
                   "purchase"
               ).map(StoredOperation::getResult)
               .flatMap(res -> {
@@ -79,15 +80,15 @@ public class CardOperationRequestedConsumer {
           // Abono a la cuenta principal (transfer_in)
           BalanceOperationRequest req = new BalanceOperationRequest();
           req.setOperationId(evt.getOperationId());
-          req.setType("TRANSFER_IN");
+          req.setType("transfer_in");
           req.setAmount(evt.getAmount().doubleValue());
-          req.setMetadata(java.util.Map.of("source","yanki","use","p2p"));
+          req.setMetadata(java.util.Map.of("source", "yanki", "use", "p2p"));
 
           return accountsClient.applyBalanceOperation(card.getPrimaryAccountId(), req)
               .map(res -> res)  // contiene newBalance
               .doOnSuccess(res -> {
                 results.publishCreditApplied(evt.getOperationId(), evt.getCardId(), evt.getAmount(), evt.getTraceId());
-                balanceEvents.publish(evt.getCardId(), card.getPrimaryAccountId(),  BigDecimal.valueOf(res.getNewBalance()), evt.getTraceId());
+                balanceEvents.publish(evt.getCardId(), card.getPrimaryAccountId(), BigDecimal.valueOf(res.getNewBalance()), evt.getTraceId());
               });
         })
         .doOnError(e -> results.publishCreditDenied(evt.getOperationId(), evt.getCardId(), e.getMessage(), evt.getTraceId()))
@@ -99,7 +100,7 @@ public class CardOperationRequestedConsumer {
       return Mono.empty();
     // leer saldo actual para el evento (GET account)
     return accountsClient.getAccount(card.getPrimaryAccountId())
-        .doOnNext(acc -> balanceEvents.publish(card.getId(), acc.getId(),BigDecimal.valueOf(acc.getBalance()), traceId))
+        .doOnNext(acc -> balanceEvents.publish(card.getId(), acc.getId(), BigDecimal.valueOf(acc.getBalance()), traceId))
         .then();
   }
 }

@@ -32,6 +32,8 @@ public interface CardService {
     Mono<CardOperationResponse> debitWithdrawal(String id, DebitWithdrawalRequest req);
     //Pagar un crédito con la tajeta de débito
     Mono<CardOperationResponse> payCreditWithDebitCard(String id, PayCreditRequest req);
+    //Depósito con débito - suma a la cuenta principal
+    Mono<CardOperationResponse> debitDeposit(String cardId, DebitDepositRequest request);
     //últimos movimientos
     Flux<CardMovement> lastMovements(String id, Integer limit);
     //Saldo de la cuenta principal asociada

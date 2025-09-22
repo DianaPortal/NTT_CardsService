@@ -117,6 +117,16 @@ public class CardApiDelegateImpl implements ApiApiDelegate {
                 .doOnSuccess(res -> log.info("Pago de crédito con débito aplicado? {}", res != null && Boolean.TRUE.equals(res.getApplied())))
                 .map(ResponseEntity::ok);
     }
+    
+    @Override
+    public Mono<ResponseEntity<CardOperationResponse>> debitDeposit(String id,
+                                                                    Mono<DebitDepositRequest> debitDepositRequest,
+                                                                    ServerWebExchange exchange) {
+        log.info("POST /api/cards/{}/debit/deposits - deposit", id);
+        return debitDepositRequest
+            .flatMap(req -> service.debitDeposit(id, req))
+            .map(ResponseEntity::ok);
+    }
 
     // Queries
     @Override

@@ -154,7 +154,7 @@ paths:
       responses:
         '204':
           description: Card deleted successfully
-          content: {}
+          content: { }
         '404':
           description: Card not found
           content:
@@ -534,6 +534,59 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/cards/{id}/debit/deposits:
+    post:
+      summary: Deposit (income) to the primary account through the debit card
+      operationId: debitDeposit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DebitDepositRequest"
+      responses:
+        '200':
+          description: Deposit applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardOperationResponse"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '409':
+          description: Duplicate operation (operationId already processed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '422':
+          description: Business rule not satisfied (status not ACTIVE)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ===== Queries (movements & primary balance) =====
   /api/cards/{id}/movements:
     get:
@@ -787,6 +840,23 @@ components:
         channel:
           type: string
           example: ATM
+    DebitDepositRequest:
+      type: object
+      required: [ operationId, amount ]
+      properties:
+        operationId:
+          type: string
+          description: UUID for idempotency
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        source:
+          type: string
+          description: Origin reference (optional)
+        channel:
+          type: string
+          example: TRANSFER_IN
 
     PayCreditRequest:
       type: object

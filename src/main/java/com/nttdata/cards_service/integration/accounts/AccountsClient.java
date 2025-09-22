@@ -5,7 +5,6 @@ import io.github.resilience4j.circuitbreaker.*;
 import io.github.resilience4j.reactor.circuitbreaker.operator.*;
 import io.github.resilience4j.reactor.timelimiter.*;
 import io.github.resilience4j.timelimiter.*;
-import lombok.*;
 import lombok.extern.slf4j.*;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.http.*;
@@ -42,7 +41,7 @@ public class AccountsClient {
     return webClient.get()
         .uri("/accounts/{id}", id)
         .retrieve()
-        .onStatus(s -> s.value()==404, r -> Mono.error(new IllegalArgumentException("Account not found")))
+        .onStatus(s -> s.value() == 404, r -> Mono.error(new IllegalArgumentException("Account not found")))
         .bodyToMono(AccountDto.class)
         .transformDeferred(CircuitBreakerOperator.of(cb))
         .transformDeferred(TimeLimiterOperator.of(timeLimiterRegistry.timeLimiter("accounts")))
@@ -58,11 +57,12 @@ public class AccountsClient {
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(req)
         .retrieve()
-        .onStatus(s -> s.value()==404, r -> Mono.error(new IllegalArgumentException("Account not found")))
+        .onStatus(s -> s.value() == 404, r -> Mono.error(new IllegalArgumentException("Account not found")))
         .bodyToMono(BalanceOperationResponse.class)
         .transformDeferred(CircuitBreakerOperator.of(cb))
         .transformDeferred(TimeLimiterOperator.of(timeLimiterRegistry.timeLimiter("accounts")))
         .onErrorMap(TimeoutException.class,
             ex -> new ResponseStatusException(GATEWAY_TIMEOUT, "Timeout Accounts (2s)", ex));
   }
+
 }

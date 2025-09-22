@@ -45,7 +45,8 @@ public class DebitOrchestratorService {
     /*if (!"DEBIT".equals(card.getCardType())) return Mono.error(new IllegalStateException("Not a DEBIT card"));
     if (!"ACTIVE".equals(card.getStatus())) return Mono.error(new IllegalStateException("Card is not ACTIVE"));*/
     if (!"DEBIT".equals(card.getCardType())) return Mono.error(new IllegalStateException("Not a DEBIT card"));
-    if (card.getStatus() != CardResponse.StatusEnum.ACTIVE) return Mono.error(new IllegalStateException("Card is not ACTIVE"));
+    if (card.getStatus() != CardResponse.StatusEnum.ACTIVE)
+      return Mono.error(new IllegalStateException("Card is not ACTIVE"));
 
     // Validación de límites (simple; puedes extenderla con límites por transacción/día)
     if ("withdrawal".equalsIgnoreCase(txType) && card.getLimits() != null && card.getLimits().getAtmWithdrawalLimit() != null) {
@@ -123,6 +124,7 @@ public class DebitOrchestratorService {
               );
         });
   }
+
   // Compensación: deposita a cada cuenta lo debitado y registra una transacción de reversa
   public Mono<Void> compensate(Card card, String operationId, List<CardOperationResponseSlices> slices, String failedTxType) {
     return Flux.fromIterable(slices)
