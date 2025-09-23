@@ -20,9 +20,9 @@ Muestra la interacción entre Clientes, Transacciones, Cuentas y Créditos.
 ## Diagrama de Secuencia CRUD
 
 
-<img width="981" height="1315" alt="image" src="https://github.com/user-attachments/assets/0e064823-14be-482d-917a-35402bed412f" />
+![diagramacards](https://github.com/user-attachments/assets/f3cd647b-bdfa-4fc2-81ec-014d635067a5)
 
-[DiagramaSecuenciaAccount.png](Diagramas/DiagramaSecuenciaAccount.png)
+
 
 
 
