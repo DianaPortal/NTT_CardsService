@@ -25,9 +25,10 @@ services:
       APP_AUTH_ALLOWED_ISSUERS: "http://keycloak:8091/realms/nttdatabank,http://localhost:8091/realms/nttdatabank"
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8091/realms/nttdatabank
 
-      # Servicios que todavía no están dockerizadosa
-      SERVICE_ACCOUNTS_BASE_URL: http://host.docker.internal:8085/api
-      SERVICE_CREDITS_BASE_URL: http://host.docker.internal:8585/api
+      # Servicios dockerizados
+      SERVICE_CREDITS_BASE_URL: http://credits-service:8585/api
+      SERVICE_ACCOUNTS_BASE_URL: http://account-service:8085/api
+      ## Servicios que todavía no están dockerizados
       SERVICE_TRANSACTIONS_BASE_URL: http://host.docker.internal:8083/api/v1
 
       JAVA_OPTS: -XX:MaxRAMPercentage=75.0
