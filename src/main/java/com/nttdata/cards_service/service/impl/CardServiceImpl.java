@@ -1,6 +1,7 @@
 package com.nttdata.cards_service.service.impl;
 
 import com.nttdata.cards_service.adapter.mapper.*;
+import com.nttdata.cards_service.cache.*;
 import com.nttdata.cards_service.integration.accounts.dto.*;
 import com.nttdata.cards_service.integration.credits.dto.*;
 import com.nttdata.cards_service.model.*;
@@ -30,6 +31,7 @@ public class CardServiceImpl implements CardService {
   private final MovementQueryService movements;
   private final PrimaryBalanceService primaryBalance;
   private final CardMapper mapper;
+  private final CardsCacheService cache;
   private final com.nttdata.cards_service.integration.accounts.AccountsClient accountsClient;
 
   @Override
@@ -79,8 +81,9 @@ public class CardServiceImpl implements CardService {
 
   @Override
   public Mono<CardResponse> getCardById(String id) {
-    return repo.findById(id)
-        .map(mapper::toResponse);
+    return cache.cardById(id, () ->
+        repo.findById(id)
+            .map(mapper::toResponse));
   }
 
   @Override
@@ -202,21 +205,88 @@ public class CardServiceImpl implements CardService {
   @Override
   public Mono<CardOperationResponse> debitPayment(String id, DebitPaymentRequest req) {
     return debit.debit(id, req.getOperationId(), req.getAmount(),
-            "DEBIT_PAYMENT", java.util.Map.of("channel", req.getChannel(), "merchant", req.getMerchant()), "purchase")
+            "DEBIT_PAYMENT", Map.of("channel",
+                req.getChannel(), "merchant",
+                req.getMerchant()), "purchase")
         .map(StoredOperation::getResult);
   }
 
   @Override
   public Mono<CardOperationResponse> debitWithdrawal(String id, DebitWithdrawalRequest req) {
-    return debit.debit(id, req.getOperationId(), req.getAmount(),
-            "DEBIT_WITHDRAWAL", java.util.Map.of("channel", req.getChannel(), "atmId", req.getAtmId()), "withdrawal")
+    return debit.debit(
+            id,
+            req.getOperationId(),
+            req.getAmount(),
+            "DEBIT_WITHDRAWAL",
+            Map.of("channel",
+                req.getChannel(), "atmId",
+                req.getAtmId()), "withdrawal")
         .map(StoredOperation::getResult);
   }
 
   @Override
   public Mono<CardOperationResponse> payCreditWithDebitCard(String id, PayCreditRequest req) {
-    return payCredit.pay(id, req.getOperationId(), req.getCreditId(), req.getAmount(), req.getNote())
+    return payCredit.pay(
+            id,
+            req.getOperationId(),
+            req.getCreditId(),
+            req.getAmount(),
+            req.getNote())
         .map(StoredOperation::getResult);
+  }
+
+  @Override
+  public Mono<CardOperationResponse> debitDeposit(String cardId, DebitDepositRequest request) {
+    if (request.getAmount() == null || request.getAmount() <= 0d)
+      return Mono.error(new IllegalArgumentException("amount > 0 requerido"));
+    if (request.getOperationId() == null || request.getOperationId().isBlank())
+      return Mono.error(new IllegalArgumentException("operationId requerido"));
+
+    return repo.findById(cardId)
+        .switchIfEmpty(Mono.error(new IllegalArgumentException("Card not found")))
+        .flatMap(card -> {
+          if (!DEBIT_CARD_TYPE.equalsIgnoreCase(card.getCardType()))
+            return Mono.error(new IllegalStateException("Solo tarjetas DEBIT aceptan depósitos"));
+          if (card.getStatus() == null || !"ACTIVE".equalsIgnoreCase(String.valueOf(card.getStatus())))
+            return Mono.error(new IllegalStateException("Card no ACTIVE"));
+          String primaryAccountId = card.getPrimaryAccountId();
+          if (primaryAccountId == null || primaryAccountId.isBlank())
+            return Mono.error(new IllegalStateException("Card sin primaryAccount"));
+
+          // Construir operación de balance (type DEPOSIT)
+          BalanceOperationRequest opReq = new BalanceOperationRequest();
+          opReq.setOperationId(request.getOperationId());
+          opReq.setType("deposit");
+          opReq.setAmount(request.getAmount());
+          Map<String, Object> metadata = new HashMap<>();
+          metadata.put("channel", request.getChannel() == null ? "INCOME" : request.getChannel());
+          metadata.put("description", request.getSource() == null ? "CARD_INCOME" : request.getSource());
+          opReq.setMetadata(metadata);
+
+          return accountsClient.applyBalanceOperation(primaryAccountId, opReq)
+              .map(resp -> buildDepositResponse(primaryAccountId, request, resp));
+        });
+
+  }
+
+  private CardOperationResponse buildDepositResponse(String accountId,
+                                                     DebitDepositRequest req,
+                                                     BalanceOperationResponse balResp) {
+    double commission = balResp.getCommissionApplied() == null
+        ? 0d
+        : balResp.getCommissionApplied().doubleValue();
+
+    CardOperationResponseSlices slice = new CardOperationResponseSlices()
+        .accountId(accountId)
+        .amount(req.getAmount())
+        .commissionApplied(commission);
+
+    return new CardOperationResponse()
+        .applied(Boolean.TRUE)
+        .totalAmount(req.getAmount())
+        .commissionTotal(commission)
+        .addSlicesItem(slice)
+        .message("Deposit OK");
   }
 
   @Override

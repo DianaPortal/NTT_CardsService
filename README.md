@@ -1,5 +1,6 @@
 # NTT_CardsService
 
+
 Microservicio bancario desarrollado en el Bootcamp de Microservicios.
 Este repositorio corresponde al Entrega Final del proyecto, donde se implementa el microservicio de tarjetas.
 
@@ -21,7 +22,6 @@ Muestra la interacción entre Clientes, Transacciones, Cuentas y Créditos.
 
 
 ![diagramacards](https://github.com/user-attachments/assets/f3cd647b-bdfa-4fc2-81ec-014d635067a5)
-
 
 
 

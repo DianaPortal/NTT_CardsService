@@ -1,65 +1,68 @@
 package com.nttdata.cards_service.integration.accounts;
 
-import com.nttdata.cards_service.integration.accounts.dto.AccountDto;
-import com.nttdata.cards_service.integration.accounts.dto.BalanceOperationRequest;
-import com.nttdata.cards_service.integration.accounts.dto.BalanceOperationResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
-import io.github.resilience4j.circuitbreaker.CircuitBreaker;
-import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOperator;
-import io.github.resilience4j.reactor.timelimiter.TimeLimiterOperator;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import com.nttdata.cards_service.integration.accounts.dto.*;
+import io.github.resilience4j.circuitbreaker.*;
+import io.github.resilience4j.reactor.circuitbreaker.operator.*;
+import io.github.resilience4j.reactor.timelimiter.*;
+import io.github.resilience4j.timelimiter.*;
+import lombok.extern.slf4j.*;
+import org.springframework.beans.factory.annotation.*;
+import org.springframework.http.*;
+import org.springframework.stereotype.*;
+import org.springframework.web.reactive.function.client.*;
+import org.springframework.web.server.*;
+import reactor.core.publisher.*;
 
-import java.util.concurrent.TimeoutException;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.web.server.ResponseStatusException;
+import java.util.concurrent.*;
 
-import static org.springframework.http.HttpStatus.GATEWAY_TIMEOUT;
-
+import static org.springframework.http.HttpStatus.*;
 
 @Component
-
 @Slf4j
 public class AccountsClient {
 
-  private final WebClient web;
+
+  private final WebClient webClient;
   private final CircuitBreakerRegistry circuitBreakerRegistry;
   private final TimeLimiterRegistry timeLimiterRegistry;
-  private String baseUrl;
+
   public AccountsClient(@Qualifier("accountsWebClient") WebClient webClient,
                         CircuitBreakerRegistry circuitBreakerRegistry,
                         TimeLimiterRegistry timeLimiterRegistry) {
-    this.web= webClient;
+    this.webClient = webClient;
     this.circuitBreakerRegistry = circuitBreakerRegistry;
     this.timeLimiterRegistry = timeLimiterRegistry;
   }
 
-  //Obtener una cuenta por id
+  // Obtener una cuenta por id
   public Mono<AccountDto> getAccount(String id) {
     CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("accounts");
-    log.debug("GET Accounts /api/accounts/{}", id);
-    return web.get().uri(baseUrl + "/accounts/{id}", id)
-        .retrieve().bodyToMono(AccountDto.class)
+    log.debug("GET Accounts /accounts/{}", id); // base-url incluye /api (según properties)
+    return webClient.get()
+        .uri("/accounts/{id}", id)
+        .retrieve()
+        .onStatus(s -> s.value() == 404, r -> Mono.error(new IllegalArgumentException("Account not found")))
+        .bodyToMono(AccountDto.class)
         .transformDeferred(CircuitBreakerOperator.of(cb))
         .transformDeferred(TimeLimiterOperator.of(timeLimiterRegistry.timeLimiter("accounts")))
-        .onErrorMap(TimeoutException.class, ex -> new ResponseStatusException(GATEWAY_TIMEOUT, "Timeout en Accounts (2s)", ex));
-
+        .onErrorMap(TimeoutException.class,
+            ex -> new ResponseStatusException(GATEWAY_TIMEOUT, "Timeout Accounts (2s)", ex));
   }
 
-  //Aplica - Operación de saldo: débito o crédito  a una cuenta
   public Mono<BalanceOperationResponse> applyBalanceOperation(String accountId, BalanceOperationRequest req) {
     CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("accounts");
-    log.debug("POST Accounts /api/accounts/{}/balance-ops body={}", accountId, req);
-    return web.post().uri(baseUrl + "/accounts/{id}/balance-ops", accountId)
+    log.debug("POST Accounts /accounts/{}/balance-ops opId={}", accountId, req.getOperationId());
+    return webClient.post()
+        .uri("/accounts/{id}/balance-ops", accountId)
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(req)
-        .retrieve().bodyToMono(BalanceOperationResponse.class)
+        .retrieve()
+        .onStatus(s -> s.value() == 404, r -> Mono.error(new IllegalArgumentException("Account not found")))
+        .bodyToMono(BalanceOperationResponse.class)
         .transformDeferred(CircuitBreakerOperator.of(cb))
         .transformDeferred(TimeLimiterOperator.of(timeLimiterRegistry.timeLimiter("accounts")))
-        .onErrorMap(TimeoutException.class, ex -> new ResponseStatusException(GATEWAY_TIMEOUT, "Timeout en Accounts (2s)", ex));
+        .onErrorMap(TimeoutException.class,
+            ex -> new ResponseStatusException(GATEWAY_TIMEOUT, "Timeout Accounts (2s)", ex));
   }
+
 }

@@ -29,11 +29,11 @@ class AccountsClientTest {
     String base = server.url("/api/v1").toString();
 
     AccountsClient client = new AccountsClient(
-        WebClient.builder().build(),
+        WebClient.builder().baseUrl(base).build(),
         CircuitBreakerRegistry.ofDefaults(),
         TimeLimiterRegistry.of(TimeLimiterConfig.custom().timeoutDuration(Duration.ofSeconds(2)).build())
     );
-    ReflectionTestUtils.setField(client, "baseUrl", base);
+//    ReflectionTestUtils.setField(client, "baseUrl", base);
 
     StepVerifier.create(client.getAccount("A1"))
         .expectNextMatches(a -> "A1".equals(a.getId()) && a.getBalance() == 123.45)
@@ -55,11 +55,11 @@ class AccountsClientTest {
     String base = server.url("/api/v1").toString();
 
     AccountsClient client = new AccountsClient(
-        WebClient.builder().build(),
+        WebClient.builder().baseUrl(base).build(),
         CircuitBreakerRegistry.ofDefaults(),
         TimeLimiterRegistry.of(TimeLimiterConfig.custom().timeoutDuration(Duration.ofSeconds(2)).build())
     );
-    ReflectionTestUtils.setField(client, "baseUrl", base);
+    //ReflectionTestUtils.setField(client, "baseUrl", base);
 
     StepVerifier.create(client.getAccount("A1"))
         .expectError(ResponseStatusException.class) // 504

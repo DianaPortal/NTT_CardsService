@@ -18,11 +18,12 @@
     <properties>
         <java.version>11</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Versiones compatibles -->
         <checkstyle.version>10.26.1</checkstyle.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
-        <!-- <jjwt.version>0.11.5</jjwt.version> -->
-        <jjwt.version>0.12.5</jjwt.version>
+
+
     </properties>
 
     <dependencyManagement>
@@ -111,13 +112,17 @@
             <version>2.9.0</version>
         </dependency>
 
-         <dependency>
+        <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>mockwebserver</artifactId>
             <version>4.10.0</version>
 
         </dependency>
-
+        <!--Eureka-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
 
         <!-- Resilience4j -->
         <dependency>
@@ -148,36 +153,40 @@
             <version>1.7.1</version>
         </dependency>
 
-       
+
+        <!--Redis-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+
+        <!-- Seguridad -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
 
-        <!-- JJWT -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>${jjwt.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
 
         <!-- Kafka -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
 
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
     </dependencies>
@@ -195,7 +204,43 @@
             </plugins>
         </pluginManagement>
 
+        <resources>
+            <!-- Solo .properties con filtering -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+
+            <!-- Todo lo demás SIN filtering -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+
+
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version> <!-- más robusto que 3.2.0 -->
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <!-- NO filtrar .properties ni .yml: copia en bruto -->
+                    <nonFilteredFileExtensions>
+                        <nonFilteredFileExtension>properties</nonFilteredFileExtension>
+                        <nonFilteredFileExtension>yml</nonFilteredFileExtension>
+                        <nonFilteredFileExtension>yaml</nonFilteredFileExtension>
+                    </nonFilteredFileExtensions>
+                </configuration>
+            </plugin>
+
             <!--Plugin Jacoco -->
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -203,14 +248,18 @@
                 <version>0.8.8</version>
                 <executions>
                     <execution>
-                        <goals><goal>prepare-agent</goal></goals>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
                     </execution>
 
                     <!-- GENERAR jacoco.xml (para Sonar y  site) -->
                     <execution>
                         <id>report</id>
                         <phase>verify</phase>
-                        <goals><goal>report</goal></goals>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
                         <configuration>
                             <excludes>
                                 <!-- Generados por OpenAPI -->
@@ -218,8 +267,10 @@
                                 <exclude>**/com/nttdata/cards_service/model/**</exclude>
 
                                 <exclude>**/com/nttdata/cards_service/integration/**</exclude>
-
+                                <exclude>**/com/nttdata/cards_service/cache/**</exclude>
+                                <exclude>**/com/nttdata/cards_service/kafka/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/adapter/mapper/*</exclude>
+                                <exclude>**/com/nttdata/cards_service/adapter/exception/*</exclude>
                                 <exclude>**/com/nttdata/cards_service/repository/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/config/*</exclude>
                                 <exclude>com/nttdata/cards_service/CardsServiceApplication.class</exclude>
@@ -229,7 +280,9 @@
 
                     <execution>
                         <id>check</id>
-                        <goals><goal>check</goal></goals>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
                         <configuration>
                             <excludes>
                                 <!-- Generados por OpenAPI -->
@@ -237,9 +290,10 @@
                                 <exclude>**/com/nttdata/cards_service/model/**</exclude>
 
                                 <exclude>**/com/nttdata/cards_service/integration/**</exclude>
-
-                                <exclude>com/nttdata/cards_service/model/*</exclude>
+                                <exclude>**/com/nttdata/cards_service/cache/**</exclude>
+                                <exclude>**/com/nttdata/cards_service/kafka/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/adapter/mapper/*</exclude>
+                                <exclude>**/com/nttdata/cards_service/adapter/exception/*</exclude>
                                 <exclude>**/com/nttdata/cards_service/repository/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/config/*</exclude>
                                 <exclude>com/nttdata/cards_service/CardsServiceApplication.class</exclude>
@@ -271,15 +325,17 @@
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.9.1.2184</version>
             </plugin>
-<!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
-                <configuration>
-                    <skipTests>true</skipTests>
-                </configuration>
-            </plugin>-->
+
+
+            <!--
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-surefire-plugin</artifactId>
+                            <version>2.22.2</version>
+                            <configuration>
+                                <skipTests>true</skipTests>
+                            </configuration>
+                        </plugin>-->
             <!--checkstyle-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -291,6 +347,7 @@
                     <excludes>**/target/**,**/generated-sources/**</excludes>
                     <consoleOutput>true</consoleOutput>
                     <logViolationsToConsole>true</logViolationsToConsole>
+
                 </configuration>
                 <dependencies>
                     <!-- Versión compatible de Checkstyle -->

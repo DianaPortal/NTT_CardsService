@@ -64,7 +64,7 @@ class TransactionsClientTimeoutTest {
   @Test
   void findByProduct_ok() {
     server.enqueue(new MockResponse()
-        .setBody("[{\"id\":\"T1\"}]")
+        .setBody("{\"transactions\":[{\"id\":\"T1\"}]}")
         .addHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE));
     StepVerifier.create(client.findByProduct("P1"))
         .expectNextMatches(tx -> "T1".equals(tx.getId()))
