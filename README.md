@@ -4,12 +4,11 @@ Microservicio bancario desarrollado en el Bootcamp de Microservicios.
 Este repositorio corresponde al Entrega Final del proyecto, donde se implementa el microservicio de tarjetas.
 
 
-# Endpoints (CRUD)
+##Collections Pruebas APIs:
+https://github.com/DianaPortal/postman-collections-ms-NTTDATA
 
-Base URL: http://localhost:8090/api/cards
 
-
-#Diagrama Arquitectura Completa de Microservicios
+##Diagrama Arquitectura Completa de Microservicios
 ![Imagen de WhatsApp 2025-09-23 a las 17 22 32_3a609d96](https://github.com/user-attachments/assets/e65d7f30-71cf-4cd7-99dc-bf90f4b0ab16)
 
 
@@ -18,10 +17,7 @@ Muestra la interacción entre Clientes, Transacciones, Cuentas y Créditos.
 ![](https://github.com/user-attachments/assets/288b7378-24f4-4be6-97f2-167f06baee26)
 
 
-
-
-
-# Diagrama de Secuencia CRUD
+## Diagrama de Secuencia CRUD
 
 
 <img width="981" height="1315" alt="image" src="https://github.com/user-attachments/assets/0e064823-14be-482d-917a-35402bed412f" />
