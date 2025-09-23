@@ -15,11 +15,11 @@ import org.junit.jupiter.api.*;
 import org.mockito.*;
 import reactor.core.publisher.*;
 import reactor.test.*;
-
+import com.nttdata.cards_service.adapter.mapper.CardMapper;
 import java.time.*;
 import java.util.*;
 import java.util.function.*;
-
+import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -727,5 +727,305 @@ class CardServiceImplTest {
     StepVerifier.create(svc.primaryBalance("C1"))
         .expectNextMatches(p -> "C1".equals(p.getCardId()) && p.getBalance() == 10.0)
         .verifyComplete();
+  }
+
+  @Test
+  void updateCard_debit_with_null_primary_account_flows_without_validation() {
+    CardRepository repo = mock(CardRepository.class);
+    CardMapper mapper = mock(CardMapper.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+    Card db = new Card();
+    db.setId("C55");
+    db.setCreationDate(OffsetDateTime.now().minusDays(2));
+    when(repo.findById("C55")).thenReturn(just(db));
+
+    Card upd = new Card();
+    upd.setCardType("DEBIT");
+    upd.setPrimaryAccountId(null); // should skip validation
+    upd.setAccounts(new ArrayList<>(List.of("AX", "AY")));
+    when(mapper.toEntity(any())).thenReturn(upd);
+    when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
+    when(mapper.toResponse(any(Card.class))).thenAnswer(inv -> new CardResponse().id(inv.getArgument(0, Card.class).getId()));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
+
+    StepVerifier.create(svc.updateCard("C55", new CardRequest()))
+        .expectNextMatches(r -> "C55".equals(r.getId()))
+        .verifyComplete();
+
+    verify(accounts, never()).getAccount(anyString());
+  }
+
+  @Test
+  void addAccount_does_not_duplicate_existing() {
+    CardRepository repo = mock(CardRepository.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+    CardMapper mapper = mock(CardMapper.class);
+
+    Card c = new Card();
+    c.setId("C7");
+    c.setCardType("DEBIT");
+    c.setPrimaryAccountId("A1");
+    c.setAccounts(new ArrayList<>(List.of("A1", "A2")));
+    when(repo.findById("C7")).thenReturn(just(c));
+
+    AccountDto acc = new AccountDto();
+    acc.setId("A2"); // already present
+    acc.setActive(true);
+    when(accounts.getAccount("A2")).thenReturn(just(acc));
+    when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
+    when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C7"));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
+
+    StepVerifier.create(svc.addAccount("C7", new AddAccountRequest().accountId("A2")))
+        .expectNextMatches(r -> "C7".equals(r.getId()))
+        .verifyComplete();
+
+    ArgumentCaptor<Card> cap = ArgumentCaptor.forClass(Card.class);
+    verify(repo).save(cap.capture());
+    assertEquals(List.of("A1", "A2"), cap.getValue().getAccounts());
+  }
+
+  @Test
+  void addAccount_allows_account_with_null_active() {
+    CardRepository repo = mock(CardRepository.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+    CardMapper mapper = mock(CardMapper.class);
+
+    Card c = new Card();
+    c.setId("C8");
+    c.setCardType("DEBIT");
+    c.setPrimaryAccountId("P1");
+    c.setAccounts(new ArrayList<>(List.of("P1")));
+    when(repo.findById("C8")).thenReturn(just(c));
+
+    AccountDto acc = new AccountDto();
+    acc.setId("A9");
+    acc.setActive(null); // treated as active
+    when(accounts.getAccount("A9")).thenReturn(just(acc));
+    when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
+    when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C8"));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
+
+    StepVerifier.create(svc.addAccount("C8", new AddAccountRequest().accountId("A9")))
+        .expectNextMatches(r -> "C8".equals(r.getId()))
+        .verifyComplete();
+
+    ArgumentCaptor<Card> cap = ArgumentCaptor.forClass(Card.class);
+    verify(repo).save(cap.capture());
+    assertEquals(List.of("P1", "A9"), cap.getValue().getAccounts());
+  }
+
+  @Test
+  void setPrimaryAccount_reorders_accounts() {
+    CardRepository repo = mock(CardRepository.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+    CardMapper mapper = mock(CardMapper.class);
+
+    Card c = new Card();
+    c.setId("CC1");
+    c.setCardType("DEBIT");
+    c.setPrimaryAccountId("A1");
+    c.setAccounts(new ArrayList<>(List.of("A1", "A2", "A3")));
+    when(repo.findById("CC1")).thenReturn(just(c));
+
+    AccountDto acc = new AccountDto();
+    acc.setId("A3");
+    acc.setActive(true);
+    when(accounts.getAccount("A3")).thenReturn(just(acc));
+
+    when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
+    when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("CC1"));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
+
+    StepVerifier.create(svc.setPrimaryAccount("CC1", new SetPrimaryAccountRequest().accountId("A3")))
+        .expectNextMatches(r -> "CC1".equals(r.getId()))
+        .verifyComplete();
+
+    ArgumentCaptor<Card> cap = ArgumentCaptor.forClass(Card.class);
+    verify(repo).save(cap.capture());
+    assertEquals(List.of("A3", "A1", "A2"), cap.getValue().getAccounts());
+    assertEquals("A3", cap.getValue().getPrimaryAccountId());
+  }
+
+  // -------- debitDeposit tests --------
+
+  @Test
+  void debitDeposit_rejects_invalid_amount() {
+    CardRepository repo = mock(CardRepository.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, accounts);
+
+    DebitDepositRequest req = new DebitDepositRequest().operationId("OPX").amount(0d);
+    StepVerifier.create(svc.debitDeposit("C1", req))
+        .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("amount > 0 requerido")))
+        .verify();
+  }
+
+  @Test
+  void debitDeposit_rejects_missing_operationId() {
+    CardRepository repo = mock(CardRepository.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, accounts);
+
+    DebitDepositRequest req = new DebitDepositRequest().amount(10d);
+    StepVerifier.create(svc.debitDeposit("C1", req))
+        .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("operationId requerido")))
+        .verify();
+  }
+
+  @Test
+  void debitDeposit_card_not_found() {
+    CardRepository repo = mock(CardRepository.class);
+    when(repo.findById("CX")).thenReturn(Mono.empty());
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, mock(AccountsClient.class));
+
+    DebitDepositRequest req = new DebitDepositRequest().amount(10d).operationId("OP1");
+    StepVerifier.create(svc.debitDeposit("CX", req))
+        .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Card not found")))
+        .verify();
+  }
+
+  @Test
+  void debitDeposit_rejects_non_debit() {
+    CardRepository repo = mock(CardRepository.class);
+    Card card = new Card();
+    card.setCardType("CREDIT");
+    when(repo.findById("CND")).thenReturn(just(card));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, mock(AccountsClient.class));
+
+    DebitDepositRequest req = new DebitDepositRequest().amount(10d).operationId("OP1");
+    StepVerifier.create(svc.debitDeposit("CND", req))
+        .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Solo tarjetas DEBIT")))
+        .verify();
+  }
+
+  @Test
+  void debitDeposit_rejects_not_active_status() {
+    CardRepository repo = mock(CardRepository.class);
+    Card card = new Card();
+    card.setCardType("DEBIT");
+    card.setStatus(CardResponse.StatusEnum.EXPIRED);// not ACTIVE
+    when(repo.findById("CI")).thenReturn(just(card));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, mock(AccountsClient.class));
+
+    DebitDepositRequest req = new DebitDepositRequest().amount(10d).operationId("OP2");
+    StepVerifier.create(svc.debitDeposit("CI", req))
+        .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Card no ACTIVE")))
+        .verify();
+  }
+
+  @Test
+  void debitDeposit_rejects_missing_primary_account() {
+    CardRepository repo = mock(CardRepository.class);
+    Card card = new Card();
+    card.setCardType("DEBIT");
+    card.setStatus(CardResponse.StatusEnum.ACTIVE);
+    card.setPrimaryAccountId(null);
+    when(repo.findById("CP")).thenReturn(just(card));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, mock(AccountsClient.class));
+    DebitDepositRequest req = new DebitDepositRequest().amount(10d).operationId("OP3");
+    StepVerifier.create(svc.debitDeposit("CP", req))
+        .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Card sin primaryAccount")))
+        .verify();
+  }
+
+  @Test
+  void debitDeposit_success_no_commission_defaults_metadata() {
+    CardRepository repo = mock(CardRepository.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+
+    Card card = new Card();
+    card.setId("CD1");
+    card.setCardType("DEBIT");
+    card.setStatus(CardResponse.StatusEnum.ACTIVE);
+    card.setPrimaryAccountId("A1");
+    when(repo.findById("CD1")).thenReturn(just(card));
+
+    BalanceOperationResponse balResp = new BalanceOperationResponse();
+    balResp.setCommissionApplied(null);
+
+    when(accounts.applyBalanceOperation(eq("A1"), any())).thenReturn(just(balResp));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, accounts);
+
+    DebitDepositRequest req = new DebitDepositRequest().amount(50d).operationId("OPD1");
+    StepVerifier.create(svc.debitDeposit("CD1", req))
+        .expectNextMatches(r -> Boolean.TRUE.equals(r.getApplied()) &&
+            r.getCommissionTotal() == 0d &&
+            "Deposit OK".equals(r.getMessage()) &&
+            r.getSlices() != null &&
+            r.getSlices().size() == 1 &&
+            r.getSlices().get(0).getCommissionApplied() == 0d)
+        .verifyComplete();
+
+    ArgumentCaptor<BalanceOperationRequest> cap = ArgumentCaptor.forClass(BalanceOperationRequest.class);
+    verify(accounts).applyBalanceOperation(eq("A1"), cap.capture());
+    BalanceOperationRequest sent = cap.getValue();
+    assertEquals("deposit", sent.getType());
+    assertEquals(50d, sent.getAmount());
+    assertEquals("INCOME", sent.getMetadata().get("channel"));
+    assertEquals("CARD_INCOME", sent.getMetadata().get("description"));
+  }
+
+  @Test
+  void debitDeposit_success_with_commission_and_custom_metadata() {
+    CardRepository repo = mock(CardRepository.class);
+    AccountsClient accounts = mock(AccountsClient.class);
+
+    Card card = new Card();
+    card.setId("CD2");
+    card.setCardType("DEBIT");
+    card.setStatus(CardResponse.StatusEnum.ACTIVE);
+    card.setPrimaryAccountId("PA1");
+    when(repo.findById("CD2")).thenReturn(just(card));
+
+    BalanceOperationResponse balResp = new BalanceOperationResponse();
+    balResp.setCommissionApplied(BigDecimal.valueOf(1.25).doubleValue());
+
+    when(accounts.applyBalanceOperation(eq("PA1"), any())).thenReturn(just(balResp));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, accounts);
+
+    DebitDepositRequest req = new DebitDepositRequest()
+        .amount(200d)
+        .operationId("OPD2")
+        .channel("WEB")
+        .source("USER_TRANSFER");
+
+    StepVerifier.create(svc.debitDeposit("CD2", req))
+        .expectNextMatches(r -> r.getCommissionTotal() == 1.25 &&
+            r.getTotalAmount() == 200d &&
+            r.getSlices().get(0).getCommissionApplied() == 1.25)
+        .verifyComplete();
+
+    ArgumentCaptor<BalanceOperationRequest> cap = ArgumentCaptor.forClass(BalanceOperationRequest.class);
+    verify(accounts).applyBalanceOperation(eq("PA1"), cap.capture());
+    BalanceOperationRequest sent = cap.getValue();
+    assertEquals("WEB", sent.getMetadata().get("channel"));
+    assertEquals("USER_TRANSFER", sent.getMetadata().get("description"));
+  }
+
+  @Test
+  void getCardById_cache_hit_does_not_call_repo_supplier() {
+    CardRepository repo = mock(CardRepository.class);
+    CardMapper mapper = mock(CardMapper.class);
+    CardsCacheService cache = mock(CardsCacheService.class);
+    CardResponse cached = new CardResponse().id("CACHED1");
+    when(cache.cardById(eq("CACHED1"), any())).thenReturn(just(cached));
+
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, cache, null);
+
+    StepVerifier.create(svc.getCardById("CACHED1"))
+        .expectNextMatches(r -> "CACHED1".equals(r.getId()))
+        .verifyComplete();
+
+    verify(repo, never()).findById(anyString());
   }
 }

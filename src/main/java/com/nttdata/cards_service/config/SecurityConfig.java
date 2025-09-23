@@ -52,7 +52,7 @@ public class SecurityConfig {
       Object scp = jwt.getClaims().get("scp");
       if (scp instanceof java.util.Collection) {
         for (Object v : (java.util.Collection<?>) scp) {
-          if (v != null) out.add(new SimpleGrantedAuthority("SCOPE_" + String.valueOf(v)));
+          if (v != null) out.add(new SimpleGrantedAuthority("SCOPE_" + v));
         }
       }
 
@@ -61,7 +61,7 @@ public class SecurityConfig {
       java.util.Collection<?> roles = (java.util.Collection<?>) realm.get("roles");
       if (roles == null) roles = java.util.Collections.emptyList();
       for (Object r : roles) {
-        if (r != null) out.add(new SimpleGrantedAuthority("SCOPE_" + String.valueOf(r)));
+        if (r != null) out.add(new SimpleGrantedAuthority("SCOPE_" + r));
       }
 
       return out;

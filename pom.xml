@@ -267,8 +267,10 @@
                                 <exclude>**/com/nttdata/cards_service/model/**</exclude>
 
                                 <exclude>**/com/nttdata/cards_service/integration/**</exclude>
-
+                                <exclude>**/com/nttdata/cards_service/cache/**</exclude>
+                                <exclude>**/com/nttdata/cards_service/kafka/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/adapter/mapper/*</exclude>
+                                <exclude>**/com/nttdata/cards_service/adapter/exception/*</exclude>
                                 <exclude>**/com/nttdata/cards_service/repository/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/config/*</exclude>
                                 <exclude>com/nttdata/cards_service/CardsServiceApplication.class</exclude>
@@ -288,9 +290,10 @@
                                 <exclude>**/com/nttdata/cards_service/model/**</exclude>
 
                                 <exclude>**/com/nttdata/cards_service/integration/**</exclude>
-
-                                <exclude>com/nttdata/cards_service/model/*</exclude>
+                                <exclude>**/com/nttdata/cards_service/cache/**</exclude>
+                                <exclude>**/com/nttdata/cards_service/kafka/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/adapter/mapper/*</exclude>
+                                <exclude>**/com/nttdata/cards_service/adapter/exception/*</exclude>
                                 <exclude>**/com/nttdata/cards_service/repository/**</exclude>
                                 <exclude>**/com/nttdata/cards_service/config/*</exclude>
                                 <exclude>com/nttdata/cards_service/CardsServiceApplication.class</exclude>
