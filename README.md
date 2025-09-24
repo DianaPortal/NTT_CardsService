@@ -97,9 +97,10 @@ https://github.com/DianaPortal/postman-collections-ms-NTTDATA
   - TransactionsClient (Transacciones)
     
     ■ Integraciones HTTP
-      service.credits.base-url=http://localhost:8585/api (docker: http://credits-service:8585/api)
-      service.accounts.base-url=http://localhost:8085/api (docker: http://account-service:8085/api)
-      service.transactions.base-url=http://localhost:8083/api/v1 (docker: http://host.docker.internal:8083/api/v1 si no está dockerizado)
+    
+      - service.credits.base-url=http://localhost:8585/api (docker: http://credits-service:8585/api)      
+      - service.accounts.base-url=http://localhost:8085/api (docker: http://account-service:8085/api)    
+     -  service.transactions.base-url=http://localhost:8083/api/v1 (docker: http://host.docker.internal:8083/api/v1 si no está dockerizado)
 
 
 - Kafka (eventos dominio):
@@ -116,7 +117,7 @@ https://github.com/DianaPortal/postman-collections-ms-NTTDATA
 
 Los nombres de tópicos se gestionan en config: KafkaTopicsConfig.
 
-## Configuración real (puertos, perfiles y variables)
+## Configuración  (puertos, perfiles y variables)
 
 - Puerto del servicio: 8090
 - Perfil por defecto en contenedor: docker
