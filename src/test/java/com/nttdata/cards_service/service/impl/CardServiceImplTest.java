@@ -1,5 +1,7 @@
 package com.nttdata.cards_service.service.impl;
 
+
+import com.nttdata.cards_service.cache.*;
 import com.nttdata.cards_service.integration.accounts.*;
 import com.nttdata.cards_service.integration.accounts.dto.*;
 import com.nttdata.cards_service.integration.credits.*;
@@ -33,8 +35,9 @@ class CardServiceImplTest {
                                   MovementQueryService mov,
                                   PrimaryBalanceService primary,
                                   com.nttdata.cards_service.adapter.mapper.CardMapper mapper,
+                                  CardsCacheService cache,
                                   AccountsClient accounts) {
-    return new CardServiceImpl(repo, credits, debit, pay, mov, primary, mapper, accounts);
+    return new CardServiceImpl(repo, credits, debit, pay, mov, primary, mapper, cache, accounts);
   }
 
   // --------- createCard ---------
@@ -49,7 +52,7 @@ class CardServiceImplTest {
     od.setHasOverdue(true);
     when(credits.hasOverdue("CUST1")).thenReturn(just(od));
 
-    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper,  null);
+    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper, null, null);
 
     CardRequest req = new CardRequest().customerId("CUST1");
     StepVerifier.create(svc.createCard(req))
@@ -69,7 +72,7 @@ class CardServiceImplTest {
     entity.setPrimaryAccountId(null);
     when(mapper.toEntity(any(CardRequest.class))).thenReturn(entity);
 
-    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper,  null);
+    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper, null, null);
 
     StepVerifier.create(svc.createCard(new CardRequest().customerId("CUST1")))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("DEBIT card requires primaryAccountId")))
@@ -94,7 +97,7 @@ class CardServiceImplTest {
 
     when(accounts.getAccount("A1")).thenReturn(Mono.empty());
 
-    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper, null, accounts);
 
     StepVerifier.create(svc.createCard(new CardRequest().customerId("CUST1")))
         .expectError(IllegalArgumentException.class)
@@ -121,7 +124,7 @@ class CardServiceImplTest {
     acc.setActive(false);
     when(accounts.getAccount("A1")).thenReturn(just(acc));
 
-    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper, null, accounts);
 
     StepVerifier.create(svc.createCard(new CardRequest().customerId("CUST1")))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Primary account is not active")))
@@ -151,7 +154,7 @@ class CardServiceImplTest {
     when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
     when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C1"));
 
-    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper, null, accounts);
 
     StepVerifier.create(svc.createCard(new CardRequest().customerId("CU1")))
         .expectNextMatches(r -> "C1".equals(r.getId()))
@@ -177,7 +180,7 @@ class CardServiceImplTest {
     entity.setCreditId(null);
     when(mapper.toEntity(any())).thenReturn(entity);
 
-    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper,  null);
+    CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper, null, null);
 
     StepVerifier.create(svc.createCard(new CardRequest().customerId("CUST1")))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("CREDIT card requires creditId")))
@@ -214,7 +217,7 @@ class CardServiceImplTest {
     when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C2"));
 
     CardServiceImpl svc = service(repo, credits, null, null, null, null, mapper,
-        mock(AccountsClient.class));
+        mock(CardsCacheService.class), mock(AccountsClient.class));
 
     StepVerifier.create(svc.createCard(req))
         .expectNextMatches(r -> "C2".equals(r.getId()))
@@ -232,7 +235,7 @@ class CardServiceImplTest {
     when(mapper.toResponse(any(Card.class)))
         .thenReturn(new CardResponse().id("1"), new CardResponse().id("2"));
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, null);
 
     StepVerifier.create(svc.listCards())
         .expectNextMatches(r -> "1".equals(r.getId()))
@@ -244,14 +247,18 @@ class CardServiceImplTest {
   void getCardById_uses_cache_supplier() {
     CardRepository repo = mock(CardRepository.class);
     com.nttdata.cards_service.adapter.mapper.CardMapper mapper = mock(com.nttdata.cards_service.adapter.mapper.CardMapper.class);
-
+    CardsCacheService cache = mock(CardsCacheService.class);
 
     when(repo.findById("X")).thenReturn(just(new Card()));
     when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("X"));
 
+    when(cache.cardById(eq("X"), any()))
+        .thenAnswer(inv -> {
+          Supplier<Mono<CardResponse>> sup = inv.getArgument(1);
+          return sup.get();
+        });
 
-
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, cache, null);
 
     StepVerifier.create(svc.getCardById("X"))
         .expectNextMatches(r -> "X".equals(r.getId()))
@@ -276,7 +283,7 @@ class CardServiceImplTest {
 
     when(accounts.getAccount("A2")).thenReturn(Mono.empty());
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
 
     StepVerifier.create(svc.updateCard("C1", new CardRequest()))
         .expectError(IllegalArgumentException.class)
@@ -300,7 +307,7 @@ class CardServiceImplTest {
     acc.setActive(false);
     when(accounts.getAccount("A2")).thenReturn(just(acc));
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
 
     StepVerifier.create(svc.updateCard("C1", new CardRequest()))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Primary account is not active")))
@@ -332,7 +339,7 @@ class CardServiceImplTest {
     when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
     when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C10"));
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
 
     StepVerifier.create(svc.updateCard("C10", new CardRequest()))
         .expectNextMatches(r -> "C10".equals(r.getId()))
@@ -358,7 +365,7 @@ class CardServiceImplTest {
     when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
     when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C2"));
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, null);
 
     StepVerifier.create(svc.updateCard("C2", new CardRequest()))
         .expectNextMatches(r -> "C2".equals(r.getId()))
@@ -370,7 +377,7 @@ class CardServiceImplTest {
     CardRepository repo = mock(CardRepository.class);
     when(repo.deleteById("Z")).thenReturn(Mono.empty());
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null,  null, null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, null);
 
     StepVerifier.create(svc.deleteCard("Z")).verifyComplete();
     verify(repo).deleteById("Z");
@@ -385,7 +392,7 @@ class CardServiceImplTest {
     c.setCardType("CREDIT");
     when(repo.findById("C1")).thenReturn(just(c));
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null,  null, null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, null);
 
     StepVerifier.create(svc.replaceAccounts("C1", new CardAccountsReplaceRequest()))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Not a DEBIT card")))
@@ -399,7 +406,7 @@ class CardServiceImplTest {
     c.setCardType("DEBIT");
     when(repo.findById("C1")).thenReturn(just(c));
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null,  null, null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, null, null, null);
 
     // accounts required
     StepVerifier.create(svc.replaceAccounts("C1", new CardAccountsReplaceRequest()))
@@ -435,7 +442,7 @@ class CardServiceImplTest {
     when(accounts.getAccount("A2")).thenReturn(just(acc2));
     when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
     when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C1"));
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
 
     CardAccountsReplaceRequest body = new CardAccountsReplaceRequest()
         .primaryAccountId("A1")
@@ -459,7 +466,7 @@ class CardServiceImplTest {
     Card c = new Card();
     c.setCardType("CREDIT");
     when(repo.findById("C1")).thenReturn(just(c));
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
     StepVerifier.create(svc.addAccount("C1", new AddAccountRequest().accountId("A9")))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Not a DEBIT card")))
         .verify();
@@ -503,7 +510,7 @@ class CardServiceImplTest {
     when(repo.save(any(Card.class))).thenAnswer(inv -> just(inv.getArgument(0)));
     when(mapper.toResponse(any(Card.class))).thenReturn(new CardResponse().id("C3"));
 
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
 
     StepVerifier.create(svc.addAccount("C3", new AddAccountRequest().accountId("A3")))
         .expectNextMatches(r -> "C3".equals(r.getId()))
@@ -523,7 +530,7 @@ class CardServiceImplTest {
     Card c1 = new Card();
     c1.setCardType("CREDIT");
     when(repo.findById("C1")).thenReturn(just(c1));
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, null);
     StepVerifier.create(svc.removeAccount("C1", "A1"))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Not a DEBIT card")))
         .verify();
@@ -562,7 +569,7 @@ class CardServiceImplTest {
     Card c1 = new Card();
     c1.setCardType("CREDIT");
     when(repo.findById("C1")).thenReturn(just(c1));
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  null);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, null);
     StepVerifier.create(svc.reorderAccounts("C1", new AccountReorderRequest()))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Not a DEBIT card")))
         .verify();
@@ -601,7 +608,7 @@ class CardServiceImplTest {
     Card c1 = new Card();
     c1.setCardType("CREDIT");
     when(repo.findById("C1")).thenReturn(just(c1));
-    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper,  accounts);
+    CardServiceImpl svc = service(repo, null, null, null, null, null, mapper, null, accounts);
     StepVerifier.create(svc.setPrimaryAccount("C1", new SetPrimaryAccountRequest().accountId("A1")))
         .expectErrorSatisfies(ex -> assertTrue(ex.getMessage().contains("Not a DEBIT card")))
         .verify();
@@ -653,7 +660,7 @@ class CardServiceImplTest {
     stored.setResult(new CardOperationResponse().message("OK"));
     when(debit.debit(eq("C1"), eq("OP1"), eq(100.0), anyString(), anyMap(), eq("purchase"))).thenReturn(just(stored));
 
-    CardServiceImpl svc = service(null, null, debit, null, null, null, null,  null);
+    CardServiceImpl svc = service(null, null, debit, null, null, null, null, null, null);
 
     DebitPaymentRequest req = new DebitPaymentRequest().operationId("OP1").amount(100.0).channel("POS").merchant("M1");
     StepVerifier.create(svc.debitPayment("C1", req))
@@ -668,7 +675,7 @@ class CardServiceImplTest {
     stored.setResult(new CardOperationResponse().message("OKW"));
     when(debit.debit(eq("C1"), eq("OP2"), eq(50.0), anyString(), anyMap(), eq("withdrawal"))).thenReturn(just(stored));
 
-    CardServiceImpl svc = service(null, null, debit, null, null, null, null,  null);
+    CardServiceImpl svc = service(null, null, debit, null, null, null, null, null, null);
 
     DebitWithdrawalRequest req = new DebitWithdrawalRequest().operationId("OP2").amount(50.0).channel("ATM").atmId("ATM1");
     StepVerifier.create(svc.debitWithdrawal("C1", req))
@@ -684,7 +691,7 @@ class CardServiceImplTest {
     when(pay.pay(eq("C1"), eq("OP3"), eq("CR1"), eq(25.0), eq("note"))).thenReturn(just(stored));
 
 
-    CardServiceImpl svc = service(null, null, null, pay, null, null, null,  null);
+    CardServiceImpl svc = service(null, null, null, pay, null, null, null, null, null);
 
     PayCreditRequest req = new PayCreditRequest().operationId("OP3").creditId("CR1").amount(25.0).note("note");
     StepVerifier.create(svc.payCreditWithDebitCard("C1", req))
@@ -698,7 +705,7 @@ class CardServiceImplTest {
 
     // limit null -> 10
     when(mov.lastMovements("C1", 10)).thenReturn(Flux.just(new CardMovement().id("M1")));
-    CardServiceImpl svc = service(null, null, null, null, mov, null, null,  null);
+    CardServiceImpl svc = service(null, null, null, null, mov, null, null, null, null);
     StepVerifier.create(svc.lastMovements("C1", null))
         .expectNextMatches(m -> "M1".equals(m.getId()))
         .verifyComplete();
@@ -715,7 +722,7 @@ class CardServiceImplTest {
     PrimaryBalanceService primary = mock(PrimaryBalanceService.class);
     when(primary.get("C1")).thenReturn(just(new PrimaryAccountBalance().cardId("C1").balance(10.0)));
 
-    CardServiceImpl svc = service(null, null, null, null, null, primary, null,  null);
+    CardServiceImpl svc = service(null, null, null, null, null, primary, null, null, null);
 
     StepVerifier.create(svc.primaryBalance("C1"))
         .expectNextMatches(p -> "C1".equals(p.getCardId()) && p.getBalance() == 10.0)

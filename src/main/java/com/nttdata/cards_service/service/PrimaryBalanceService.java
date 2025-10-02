@@ -1,25 +1,36 @@
-package com.nttdata.cards_service.kafka;
+package com.nttdata.cards_service.service;
 
-
-import com.nttdata.cards_service.kafka.events.*;
+import com.nttdata.cards_service.cache.*;
+import com.nttdata.cards_service.integration.accounts.*;
+import com.nttdata.cards_service.model.*;
+import com.nttdata.cards_service.repository.*;
 import lombok.*;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.*;
 import org.springframework.stereotype.*;
-
-import java.math.*;
-import java.time.*;
+import reactor.core.publisher.*;
 
 @Service
 @RequiredArgsConstructor
-public class PrimaryBalanceUpdatedProducer {
+public class PrimaryBalanceService {
+  private final CardRepository repo;
+  private final AccountsClient accounts;
+  private final CardsCacheService cache;
 
-  private final KafkaTemplate<String, Object> kafka;
 
-  @Value("${app.topics.card-primary-balance-updated}")
-  private String topic;
-
-  public void publish(String cardId, String accountId, BigDecimal balance, String traceId) {
-    kafka.send(topic, cardId, new PrimaryBalanceUpdatedEvent(cardId, accountId, balance, traceId, Instant.now()));
+  public Mono<PrimaryAccountBalance> get(String cardId) {
+    return cache.primaryBalance(cardId, () ->
+        repo.findById(cardId)
+            .flatMap(card -> {
+              if (card.getPrimaryAccountId() == null) return Mono.empty();
+              return accounts.getAccount(card.getPrimaryAccountId())
+                  .map(acc -> {
+                    PrimaryAccountBalance out = new PrimaryAccountBalance();
+                    out.setCardId(card.getId());
+                    out.setAccountId(acc.getId());
+                    out.setBalance(acc.getBalance());
+                    return out;
+                  });
+            })
+    );
   }
+
 }
